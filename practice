@@ -1,0 +1,73 @@
+ADiamondSquare::ADiamondSquare()
+{
+    PrimaryActorTick.bCanEverTick = false;
+
+    ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
+    ProceduralMesh->SetupAttachment(GetRootComponent());
+
+    Vertices.Reset();
+    Triangles.Reset();
+    UV0.Reset();
+    Colors.Reset();  // Reset Colors here
+}
+
+
+
+void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
+{
+    for (int X = 0; X <= XSize; ++X)
+    {
+        for (int Y = 0; Y <= YSize; ++Y)
+        {
+            float Z = NoiseMap[X][Y] * ZMultiplier;  // Multiply by ZMultiplier here
+            FLinearColor Color;
+            if (Z >= 0.9f * ZMultiplier)  // Multiply by ZMultiplier to scale height
+            {
+                Color = FLinearColor::Black;
+            }
+            else if (Z >= 0.7f * ZMultiplier && Z < 0.9f * ZMultiplier)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(1.0f, 1.0f, 0.5f), FLinearColor::White, (Z - 0.7f * ZMultiplier) / (0.2f * ZMultiplier));
+            }
+            else if (Z >= 0.5f * ZMultiplier && Z < 0.7f * ZMultiplier)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(0.5f, 0.5f, 0.5f), FLinearColor(1.0f, 1.0f, 0.5f), (Z - 0.5f * ZMultiplier) / (0.2f * ZMultiplier));
+            }
+            else if (Z >= 0.0f && Z < 0.5f * ZMultiplier)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor::Black, FLinearColor(0.5f, 0.5f, 0.5f), Z / (0.5f * ZMultiplier));
+            }
+            Colors.Add(Color.ToFColor(false));
+            Vertices.Add(FVector(X * Scale, Y * Scale, Z));
+            UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+        }
+    }
+}
+
+
+
+
+void ADiamondSquare::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+    if (recreateMesh) {
+        auto NoiseMap = GeneratePerlinNoiseMap();
+
+        Vertices.Reset();
+        Triangles.Reset();
+        UV0.Reset();
+        Colors.Reset();  // Reset Colors here
+
+        CreateVertices(NoiseMap);
+        CreateTriangles();
+
+        UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+
+        ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);  // Include Colors here
+        ProceduralMesh->SetMaterial(0, Material);
+        recreateMesh = false;
+    }
+}
+
+
+
