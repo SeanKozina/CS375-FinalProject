@@ -4,11 +4,10 @@
 
 ADiamondSquare::ADiamondSquare()
 {
-	PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = false;
 
-	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
-	ProceduralMesh->SetupAttachment(GetRootComponent());
-
+    ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
+    ProceduralMesh->SetupAttachment(GetRootComponent());
 }
 
 
@@ -44,7 +43,7 @@ void ADiamondSquare::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 }
-
+/*
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 {
 	for (int X = 0; X <= XSize; ++X)
@@ -57,6 +56,48 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 		}
 	}
 }
+
+*/
+
+
+
+
+
+void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
+{
+    for (int X = 0; X <= XSize; ++X)
+    {
+        for (int Y = 0; Y <= YSize; ++Y)
+        {
+            float Z = NoiseMap[X][Y];
+            FLinearColor Color;
+            if (Z >= 0.9f && Z <= 5000.0f)
+            {
+                Color = FLinearColor::Black;
+            }
+            else if (Z >= 0.7f && Z < 0.9f)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(1.0f, 1.0f, 0.5f), FLinearColor::White, (Z - 0.7f) / 0.2f);
+            }
+            else if (Z >= 0.5f && Z < 0.7f)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(0.5f, 0.5f, 0.5f), FLinearColor(1.0f, 1.0f, 0.5f), (Z - 0.5f) / 0.2f);
+            }
+            else if (Z >= 0.0f && Z < 0.5f)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor::Black, FLinearColor(0.5f, 0.5f, 0.5f), Z / 0.5f);
+            }
+            Colors.Add(Color.ToFColor(false));
+            Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier));
+            UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+        }
+    }
+    Normals.Init(FVector(0.0f, 0.0f, 1.0f), Vertices.Num());
+    Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
+    ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
+}
+
+
 
 void ADiamondSquare::CreateTriangles()
 {

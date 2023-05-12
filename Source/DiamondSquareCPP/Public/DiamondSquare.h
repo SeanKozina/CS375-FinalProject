@@ -19,18 +19,17 @@ public:
     UPROPERTY(EditAnywhere)
         bool recreateMesh = true;
 
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        int XSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        int XSize = 0;
+        int YSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        int YSize = 0;
+        float ZMultiplier = 1000.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        float ZMultiplier = 1.0f;
-
-    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        float Scale = 100.0f;
+        float Scale = 10.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
         float UVScale = 0.0f;
@@ -61,6 +60,8 @@ private:
     TArray<FVector2D> UV0;
     TArray<FVector> Normals;
     TArray<struct FProcMeshTangent> Tangents;
+
+    TArray<FColor> Colors;
 
     void CreateVertices(const TArray<TArray<float>>& NoiseMap);
     void CreateTriangles();
