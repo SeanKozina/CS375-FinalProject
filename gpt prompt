@@ -1,0 +1,332 @@
+This Unreal Engine class generates a 2d matrix of perlin noise to procedurally generate landscape:
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "ProceduralMeshComponent.h"
+#include "DiamondSquare.generated.h"
+
+class UProceduralMeshComponent;
+class UMaterialInterface;
+
+UCLASS()
+class DIAMONDSQUARECPP_API ADiamondSquare : public AActor
+{
+    GENERATED_BODY()
+
+public:
+    ADiamondSquare();
+
+    UPROPERTY(EditAnywhere)
+        bool recreateMesh = true;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        int XSize = 200;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        int YSize = 200;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        float ZMultiplier = 1000.0f;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        float Scale = 10.0f;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        float UVScale = 0.0f;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        int Octaves = 1;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        float Lacunarity = 2.0f;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+        float Persistence = 0.5f;
+
+protected:
+    virtual void BeginPlay() override;
+    virtual void OnConstruction(const FTransform& Transform) override;
+
+    UPROPERTY(EditAnywhere)
+        UMaterialInterface* Material;
+
+public:
+    virtual void Tick(float DeltaTime) override;
+
+private:
+    UProceduralMeshComponent* ProceduralMesh;
+    TArray<FVector> Vertices;
+    TArray<int> Triangles;
+    TArray<FVector2D> UV0;
+    TArray<FVector> Normals;
+    TArray<struct FProcMeshTangent> Tangents;
+
+    TArray<FColor> Colors;
+
+    void CreateVertices(const TArray<TArray<float>>& NoiseMap);
+    void CreateTriangles();
+    TArray<TArray<float>> GeneratePerlinNoiseMap();
+};
+ .cpp
+#include "DiamondSquare.h"
+#include "ProceduralMeshComponent.h"
+#include "KismetProceduralMeshLibrary.h"
+
+ADiamondSquare::ADiamondSquare()
+{
+    PrimaryActorTick.bCanEverTick = false;
+
+    ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
+    ProceduralMesh->SetupAttachment(GetRootComponent());
+}
+
+
+void ADiamondSquare::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+    if (recreateMesh) {
+        auto NoiseMap = GeneratePerlinNoiseMap();
+
+        Vertices.Reset();
+        Triangles.Reset();
+        UV0.Reset();
+
+        CreateVertices(NoiseMap);
+        CreateTriangles();
+
+        UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+
+        ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+        ProceduralMesh->SetMaterial(0, Material);
+        recreateMesh = false;
+    }
+}
+
+void ADiamondSquare::BeginPlay()
+{
+	Super::BeginPlay();
+
+}
+
+void ADiamondSquare::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+/*
+void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
+{
+	for (int X = 0; X <= XSize; ++X)
+	{
+		for (int Y = 0; Y <= YSize; ++Y)
+		{
+			float Z = NoiseMap[X][Y];
+			Vertices.Add(FVector(X * Scale, Y * Scale, Z));
+			UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+		}
+	}
+}
+
+*/
+
+
+
+
+
+void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
+{
+    for (int X = 0; X <= XSize; ++X)
+    {
+        for (int Y = 0; Y <= YSize; ++Y)
+        {
+            float Z = NoiseMap[X][Y];
+            FLinearColor Color;
+            if (Z >= 0.9f && Z <= 5000.0f)
+            {
+                Color = FLinearColor::Black;
+            }
+            else if (Z >= 0.7f && Z < 0.9f)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(1.0f, 1.0f, 0.5f), FLinearColor::White, (Z - 0.7f) / 0.2f);
+            }
+            else if (Z >= 0.5f && Z < 0.7f)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(0.5f, 0.5f, 0.5f), FLinearColor(1.0f, 1.0f, 0.5f), (Z - 0.5f) / 0.2f);
+            }
+            else if (Z >= 0.0f && Z < 0.5f)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor::Black, FLinearColor(0.5f, 0.5f, 0.5f), Z / 0.5f);
+            }
+            Colors.Add(Color.ToFColor(false));
+            Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier));
+            UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+        }
+    }
+    Normals.Init(FVector(0.0f, 0.0f, 1.0f), Vertices.Num());
+    Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
+    ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
+}
+
+
+
+void ADiamondSquare::CreateTriangles()
+{
+	int Vertex = 0;
+
+	for (int X = 0; X < XSize; ++X)
+	{
+		for (int Y = 0; Y < YSize; ++Y)
+		{
+			Triangles.Add(Vertex);//Bottom left corner
+			Triangles.Add(Vertex + 1);//Bottom right corner
+			Triangles.Add(Vertex + YSize + 1);//Top left corner
+			Triangles.Add(Vertex + 1);//Bottom right corner
+			Triangles.Add(Vertex + YSize + 2);//Top right corner
+			Triangles.Add(Vertex + YSize + 1);//Top left corner
+
+			++Vertex;
+		}
+		++Vertex;
+	}
+}
+
+
+
+
+TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
+{
+    TArray<TArray<float>> NoiseMap;
+    NoiseMap.Init(TArray<float>(), XSize + 1);
+    for (int X = 0; X <= XSize; ++X)
+    {
+        NoiseMap[X].Init(0.0f, YSize + 1);
+        for (int Y = 0; Y <= YSize; ++Y)
+        {
+            float Amplitude = 1.0f;
+            float Frequency = 1.0f;
+            float NoiseHeight = 0.0f;
+            for (int Octave = 0; Octave < Octaves; ++Octave)
+            {
+                float SampleX = X / Scale * Frequency;
+                float SampleY = Y / Scale * Frequency;
+
+                float PerlinValue = FMath::PerlinNoise2D(FVector2D(SampleX, SampleY));
+                NoiseHeight += PerlinValue * Amplitude;
+
+                Amplitude *= Persistence;
+                Frequency *= Lacunarity;
+            }
+
+            NoiseMap[X][Y] = NoiseHeight * ZMultiplier;
+        }
+    }
+    return NoiseMap;
+}
+
+in the create vertices function it is supposed to color the mesh by its height but it doesn't currently work. Can u fix it?
+
+ChatGPT
+The issue in your code is that you're trying to add colors to the vertices and trying to create a mesh section inside the "CreateVertices" function. Unreal Engine's procedural mesh component uses the "CreateMeshSection" function to construct a mesh section from a set of vertices, triangles, normals, UVs, and vertex colors. You should call this function only once after all vertices, triangles, UVs, and colors are generated.
+
+The correct approach is to first generate all vertices, colors, UVs, normals, and triangles in their respective functions, and then create the mesh section.
+
+Here's how to fix your code:
+
+First, you need to initialize Colors array inside ADiamondSquare constructor just like Vertices, Triangles, UV0 etc:
+
+cpp
+Copy code
+ADiamondSquare::ADiamondSquare()
+{
+    PrimaryActorTick.bCanEverTick = false;
+
+    ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
+    ProceduralMesh->SetupAttachment(GetRootComponent());
+
+    Vertices.Reset();
+    Triangles.Reset();
+    UV0.Reset();
+    Colors.Reset();  // Reset Colors here
+}
+Next, modify your "CreateVertices" function to remove the last part where you're trying to create a mesh section:
+
+cpp
+Copy code
+void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
+{
+    for (int X = 0; X <= XSize; ++X)
+    {
+        for (int Y = 0; Y <= YSize; ++Y)
+        {
+            float Z = NoiseMap[X][Y] * ZMultiplier;  // Multiply by ZMultiplier here
+            FLinearColor Color;
+            if (Z >= 0.9f * ZMultiplier)  // Multiply by ZMultiplier to scale height
+            {
+                Color = FLinearColor::Black;
+            }
+            else if (Z >= 0.7f * ZMultiplier && Z < 0.9f * ZMultiplier)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(1.0f, 1.0f, 0.5f), FLinearColor::White, (Z - 0.7f * ZMultiplier) / (0.2f * ZMultiplier));
+            }
+            else if (Z >= 0.5f * ZMultiplier && Z < 0.7f * ZMultiplier)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor(0.5f, 0.5f, 0.5f), FLinearColor(1.0f, 1.0f, 0.5f), (Z - 0.5f * ZMultiplier) / (0.2f * ZMultiplier));
+            }
+            else if (Z >= 0.0f && Z < 0.5f * ZMultiplier)
+            {
+                Color = FLinearColor::LerpUsingHSV(FLinearColor::Black, FLinearColor(0.5f, 0.5f, 0.5f), Z / (0.5f * ZMultiplier));
+            }
+            Colors.Add(Color.ToFColor(false));
+            Vertices.Add(FVector(X * Scale, Y * Scale, Z));
+            UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+        }
+    }
+}
+After that, move the mesh creation to the "OnConstruction" function. This function should look like this now:
+
+cpp
+Copy code
+void ADiamondSquare::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+    if (recreateMesh) {
+        auto NoiseMap = GeneratePer
+
+
+
+
+User
+continue what you were writing from 2 lines up so I can see the overlap
+
+ChatGPT
+Absolutely, here's the continuation of the code:
+
+cpp
+Copy code
+void ADiamondSquare::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+    if (recreateMesh) {
+        auto NoiseMap = GeneratePerlinNoiseMap();
+
+        Vertices.Reset();
+        Triangles.Reset();
+        UV0.Reset();
+        Colors.Reset();  // Reset Colors here
+
+        CreateVertices(NoiseMap);
+        CreateTriangles();
+
+        UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+
+        ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);  // Include Colors here
+        ProceduralMesh->SetMaterial(0, Material);
+        recreateMesh = false;
+    }
+}
+The "CreateMeshSection" function call now includes the "Colors" parameter which holds the colors of the vertices based on their heights. It's important to ensure that the "Colors" array has the same number of elements as the "Vertices" array because each color corresponds to a specific vertex. The CreateMeshSection function uses the provided arrays to construct a mesh section, and all arrays should have matching sizes.
+
+
+
