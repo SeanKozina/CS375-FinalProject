@@ -1,12 +1,16 @@
 #include "DiamondSquare.h"
+#include "Engine/World.h"
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 
-void AdjustForOcean(float& heightValue);
-void AdjustForPlains(float& heightValue);
-void AdjustForMountain(float& heightValue);
-void AdjustForRiver(float& heightValue);
-void AdjustForIsland(float& heightValue);
+DECLARE_LOG_CATEGORY_EXTERN(LogDiamondSquare, Log, All);
+DEFINE_LOG_CATEGORY(LogDiamondSquare);
+
+float AdjustForOcean(float& heightValue);
+float AdjustForPlains(float& heightValue);
+float AdjustForMountain(float& heightValue);
+float AdjustForRiver(float& heightValue);
+float AdjustForIce(float& heightValue);
 
 ADiamondSquare::ADiamondSquare()
 {
@@ -53,65 +57,82 @@ void ADiamondSquare::Tick(float DeltaTime)
 
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 {
-    for (int X = 0; X < XSize; ++X)
+
+    if (ProceduralMesh)
     {
-        for (int Y = 0; Y < YSize; ++Y)
+        TArray<FColor> VertexColors;
+
+        for (int X = 0; X < XSize; ++X)
         {
-            float Z = NoiseMap[X][Y];
-            FLinearColor Color;
-            if (Z >= 0.9f)
+            for (int Y = 0; Y < YSize; ++Y)
             {
-                Color = FLinearColor::Black;
+                float Z = NoiseMap[X][Y];
+                UE_LOG(LogDiamondSquare, Log, TEXT("Value of Z at [%d][%d]: %f"), X, Y, Z);
+                FLinearColor Color;
+
+                if (Z >= 0.9f)
+                {
+                    Color = FLinearColor::Green;        
+                }
+                else if (Z >= 0.7f && Z < 0.9f)
+                {
+                    Color = FLinearColor::Yellow;
+                }
+                else if (Z >= 0.5f && Z < 0.7f)
+                {
+                    Color = FLinearColor::Blue;
+                }
+                else if (Z >= 0.0f && Z < 0.5f)
+                {
+                    Color = FLinearColor::Red;
+                }
+
+                VertexColors.Add(Color.ToFColor(false));
+
+                Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier));
+                UV0.Add(FVector2D(X * UVScale, Y * UVScale));
             }
-            else if (Z >= 0.7f && Z < 0.9f)
-            {
-                Color = FLinearColor::LerpUsingHSV(FLinearColor(1.0f, 1.0f, 0.5f), FLinearColor::White, (Z - 0.7f) / 0.2f);
-            }
-            else if (Z >= 0.5f && Z < 0.7f)
-            {
-                Color = FLinearColor::LerpUsingHSV(FLinearColor(0.5f, 0.5f, 0.5f), FLinearColor(1.0f, 1.0f, 0.5f), (Z - 0.5f) / 0.2f);
-            }
-            else if (Z >= 0.0f && Z < 0.5f)
-            {
-                Color = FLinearColor::LerpUsingHSV(FLinearColor::Black, FLinearColor(0.5f, 0.5f, 0.5f), Z / 0.5f);
-            }
-            Colors.Add(Color.ToFColor(false));
-            Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier));
-            UV0.Add(FVector2D(X * UVScale, Y * UVScale));
         }
+
+        // If you already have Colors array and the Vertices array to be of the same size, you can skip re-assigning.
+        Colors = VertexColors;
+
+        Normals.Init(FVector(0.0f, 0.0f, 1.0f), Vertices.Num());
+        Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
+        ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
     }
-    Normals.Init(FVector(0.0f, 0.0f, 1.0f), Vertices.Num());
-    Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
-    ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
 }
 
 
 
 void ADiamondSquare::CreateTriangles()
 {
-	int Vertex = 0;
+    int Vertex = 0;
+    for (int X = 0; X < XSize - 1; ++X)
+    {
+        for (int Y = 0; Y < YSize - 1; ++Y)
+        {
+            //int Vertex = X * YSize + Y;
 
-	for (int X = 0; X < XSize; ++X)
-	{
-		for (int Y = 0; Y < YSize; ++Y)
-		{
-			Triangles.Add(Vertex);//Bottom left corner
-			Triangles.Add(Vertex + 1);//Bottom right corner
-			Triangles.Add(Vertex + YSize + 1);//Top left corner
-			Triangles.Add(Vertex + 1);//Bottom right corner
-			Triangles.Add(Vertex + YSize + 2);//Top right corner
-			Triangles.Add(Vertex + YSize + 1);//Top left corner
+            // First triangle (swapping the winding order)
+            Triangles.Add(Vertex); // Bottom left corner
+            Triangles.Add(Vertex + 1); // Bottom right corner
+            Triangles.Add(Vertex + YSize + 1); // Top left corner
 
-			++Vertex;
-		}
-		++Vertex;
-	}
+            // Second triangle (swapping the winding order)
+            Triangles.Add(Vertex + 1); // Bottom right corner
+            Triangles.Add(Vertex + YSize + 2); // Top right corner
+            Triangles.Add(Vertex + YSize + 1); // Top left corner
+            Vertex++;
+        }
+        Vertex++;
+    }
 }
-
 
 
 TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 {
+    BiomeMap.Empty();
     BiomeMap = CreateBiomeMap();
     if (BiomeMap.Num() == 0 || BiomeMap[0].Len() == 0)
     {
@@ -120,6 +141,9 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
         return TArray<TArray<float>>();
     }
 
+    float Amplitude = 1.0f;
+    float Frequency = 1.0f;
+    float NoiseHeight = 0.0f;
     TArray<TArray<float>> NoiseMap;
     NoiseMap.Init(TArray<float>(), XSize);
 
@@ -128,9 +152,10 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
         NoiseMap[X].Init(0.0f, YSize);
         for (int Y = 0; Y < YSize; ++Y)
         {
-            float Amplitude = 1.0f;
-            float Frequency = 1.0f;
-            float NoiseHeight = 0.0f;
+            
+            Amplitude = 1.0f;
+            Frequency = 1.0f;
+            NoiseHeight = 0.0f;
             for (int Octave = 0; Octave < Octaves; ++Octave)
             {
                 float SampleX = X / Scale * Frequency;
@@ -143,63 +168,72 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
                 Amplitude *= Persistence;
                 Frequency *= Lacunarity;
             }
-
             // Use the biome map to adjust noise height
             //TCHAR BiomeChar = BiomeMap[X][Y];
-            switch (BiomeMap[X][Y])
+            switch (BiomeMap[Y][X])
             {
             case 'O':
-                AdjustForOcean(NoiseHeight);
+                NoiseHeight = AdjustForOcean(NoiseHeight);
                 break;
             case 'I':
-                AdjustForIsland(NoiseHeight);
-                break;
-            case '|':
-                AdjustForRiver(NoiseHeight);
-                break;
-            case '+':
-                AdjustForMountain(NoiseHeight);
+                NoiseHeight = AdjustForIce(NoiseHeight);
                 break;
             case '%':
-                AdjustForPlains(NoiseHeight);
+                NoiseHeight = AdjustForRiver(NoiseHeight);
+                break;
+            case '+':
+                NoiseHeight = AdjustForMountain(NoiseHeight);
+                break;
+            case '|':
+                NoiseHeight = AdjustForPlains(NoiseHeight);
                 break;
             }
-
+            //NoiseHeight = FMath::Clamp(NoiseHeight,0.0f,1.0f);
             NoiseMap[X][Y] = NoiseHeight;
         }
     }
+    /*
+    for (int X = 0; X < NoiseMap.Num(); ++X)
+    {
+        FString RowData = FString::Printf(TEXT("Row %d: "), X);
+        for (int Y = 0; Y < NoiseMap[X].Num(); ++Y)
+        {
+            RowData += FString::Printf(TEXT("%f "), NoiseMap[X][Y]);
+        }
+        UE_LOG(LogTemp, Warning, TEXT("%s"), *RowData);
+    }
+    */
     return NoiseMap;
 }
 
 
-void AdjustForOcean(float& heightValue)
+float AdjustForOcean(float& heightValue)
 {
-    heightValue *= 0.5f; // Lower the terrain for oceanic regions
+    return heightValue = FMath::Lerp(0.0f,0.2f,0.1f); // Lower the terrain for oceanic regions
 }
 
-void AdjustForIsland(float& heightValue)
+float AdjustForIce(float& heightValue)
 {
-    heightValue *= 1.5f; // Increase the terrain height for island regions
+    return heightValue = FMath::Lerp(0.2f, 0.3f, heightValue);
 }
 
-void AdjustForRiver(float& heightValue)
+float AdjustForRiver(float& heightValue)
 {
-    heightValue *= 0.8f; // Lower the terrain slightly for rivers
+    //heightValue *= 0.8f; // Lower the terrain slightly for rivers
+    return 0.0f;
 }
 
-void AdjustForMountain(float& heightValue)
+float AdjustForMountain(float& heightValue)
 {
-    heightValue *= 2.0f; // Double the terrain height for mountains
+    heightValue = FMath::Lerp(0.4f, 1.0f,heightValue);
+    return heightValue; // Double the terrain height for mountains
 }
 
-void AdjustForPlains(float& heightValue)
+float AdjustForPlains(float& heightValue)
 {
-    heightValue *= 1.2f; // Slightly increase the terrain height for plains
+    heightValue = FMath::Lerp(0.2f, 0.4f, heightValue);
+    return heightValue; // Slightly increase the terrain height for plains
 }
-
-
-
-
 
 
 
@@ -210,13 +244,13 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
     const float AltitudeScale = 0.05f;
     const float LatitudeScale = 0.1f;
 
-    for (int32 y = 0; y < YSize; y++) {
+    for (int y = 0; y < YSize; y++) {
         FString row;
 
         // Use y-coordinate as a proxy for latitude.
         float latitudeFactor = FMath::Sin(PI * y / YSize);
 
-        for (int32 x = 0; x < XSize; x++) {
+        for (int x = 0; x < XSize; x++) {
             // Get altitude (height) using Perlin noise.
             float altitudeNoise = FMath::PerlinNoise2D(FVector2D(x * AltitudeScale, y * AltitudeScale));
 
@@ -240,7 +274,7 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
                     row += TEXT("|"); // Forest
                 }
                 else {
-                    row += TEXT("O"); // Desert
+                    row += TEXT("+"); // Desert
                 }
             }
             else {
@@ -250,9 +284,49 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
 
         BiomeMap.Add(row);
     }
+    for (const FString& row : BiomeMap) {
+        UE_LOG(LogDiamondSquare, Log, TEXT("%s"), *row);
+    }
 
     return BiomeMap;
 }
+
+
+/*
+TArray<FString> ADiamondSquare::CreateBiomeMap() {
+    // Define the size of the map
+
+    // Create a 2D array to store the biome data
+    TArray<FString> biomeMap;
+    for (int32 i = 0; i < YSize; ++i) {
+        biomeMap.Add(FString());
+    }
+
+    // Fill the map with biomes, dividing it into quarters
+    for (int32 y = 0; y < YSize; ++y) {
+        for (int32 x = 0; x < XSize; ++x) {
+            if (x < XSize / 2 && y < YSize / 2) {
+                biomeMap[y].AppendChar('O'); // Top-left quarter
+            }
+            else if (x >= XSize / 2 && y < YSize / 2) {
+                biomeMap[y].AppendChar('I'); // Top-right quarter
+            }
+            else if (x < XSize / 2 && y >= YSize / 2) {
+                biomeMap[y].AppendChar('|'); // Bottom-left quarter
+            }
+            else {
+                biomeMap[y].AppendChar('+'); // Bottom-right quarter
+            }
+        }
+    }
+    // Debug print the entire biome map
+    for (int32 i = 0; i < biomeMap.Num(); ++i) {
+        UE_LOG(LogDiamondSquare, Warning, TEXT("%s"), *biomeMap[i]);
+    }
+    return biomeMap;
+}
+
+*/
 
 
 
@@ -344,3 +418,28 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 }
 */
 
+
+
+/*
+void ADiamondSquare::CreateTriangles()
+{
+    int Vertex = 0;
+
+    for (int X = 0; X < XSize; ++X)
+    {
+        for (int Y = 0; Y < YSize; ++Y)
+        {
+            Triangles.Add(Vertex);//Bottom left corner
+            Triangles.Add(Vertex + 1);//Bottom right corner
+            Triangles.Add(Vertex + YSize + 1);//Top left corner
+            Triangles.Add(Vertex + 1);//Bottom right corner
+            Triangles.Add(Vertex + YSize + 2);//Top right corner
+            Triangles.Add(Vertex + YSize + 1);//Top left corner
+
+            ++Vertex;
+        }
+        ++Vertex;
+    }
+}
+
+*/
