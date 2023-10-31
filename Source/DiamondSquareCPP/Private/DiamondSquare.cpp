@@ -53,13 +53,13 @@ void ADiamondSquare::Tick(float DeltaTime)
 
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 {
-    for (int X = 0; X <= XSize; ++X)
+    for (int X = 0; X < XSize; ++X)
     {
-        for (int Y = 0; Y <= YSize; ++Y)
+        for (int Y = 0; Y < YSize; ++Y)
         {
             float Z = NoiseMap[X][Y];
             FLinearColor Color;
-            if (Z >= 0.9f && Z <= 5000.0f)
+            if (Z >= 0.9f)
             {
                 Color = FLinearColor::Black;
             }
@@ -112,6 +112,7 @@ void ADiamondSquare::CreateTriangles()
 
 TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 {
+    BiomeMap = CreateBiomeMap();
     if (BiomeMap.Num() == 0 || BiomeMap[0].Len() == 0)
     {
         // Handle the case where the BiomeMap is empty or malformed.
@@ -144,8 +145,8 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
             }
 
             // Use the biome map to adjust noise height
-            TCHAR BiomeChar = BiomeMap[Y][X];
-            switch (BiomeChar)
+            //TCHAR BiomeChar = BiomeMap[X][Y];
+            switch (BiomeMap[X][Y])
             {
             case 'O':
                 AdjustForOcean(NoiseHeight);
@@ -169,6 +170,91 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
     }
     return NoiseMap;
 }
+
+
+void AdjustForOcean(float& heightValue)
+{
+    heightValue *= 0.5f; // Lower the terrain for oceanic regions
+}
+
+void AdjustForIsland(float& heightValue)
+{
+    heightValue *= 1.5f; // Increase the terrain height for island regions
+}
+
+void AdjustForRiver(float& heightValue)
+{
+    heightValue *= 0.8f; // Lower the terrain slightly for rivers
+}
+
+void AdjustForMountain(float& heightValue)
+{
+    heightValue *= 2.0f; // Double the terrain height for mountains
+}
+
+void AdjustForPlains(float& heightValue)
+{
+    heightValue *= 1.2f; // Slightly increase the terrain height for plains
+}
+
+
+
+
+
+
+
+TArray<FString> ADiamondSquare::CreateBiomeMap() {
+    BiomeMap.Empty();
+
+    // Use these constants to scale the noise for altitude and latitude.
+    const float AltitudeScale = 0.05f;
+    const float LatitudeScale = 0.1f;
+
+    for (int32 y = 0; y < YSize; y++) {
+        FString row;
+
+        // Use y-coordinate as a proxy for latitude.
+        float latitudeFactor = FMath::Sin(PI * y / YSize);
+
+        for (int32 x = 0; x < XSize; x++) {
+            // Get altitude (height) using Perlin noise.
+            float altitudeNoise = FMath::PerlinNoise2D(FVector2D(x * AltitudeScale, y * AltitudeScale));
+
+            // Consider latitude when determining biome.
+            float latitudeNoise = FMath::PerlinNoise2D(FVector2D(x * LatitudeScale, y * LatitudeScale)) + latitudeFactor;
+
+            // Biome determination.
+            if (altitudeNoise < 0.2) {
+                if (latitudeNoise < 0.2 || latitudeNoise > 0.8) {
+                    row += TEXT("I"); // Snow (Tundra at low altitudes and northern/southern latitudes)
+                }
+                else {
+                    row += TEXT("O"); // Ocean or lowlands
+                }
+            }
+            else if (altitudeNoise < 0.6) {
+                if (latitudeNoise < 0.2) {
+                    row += TEXT("%"); // Snowy Forest
+                }
+                else if (latitudeNoise < 0.6) {
+                    row += TEXT("|"); // Forest
+                }
+                else {
+                    row += TEXT("O"); // Desert
+                }
+            }
+            else {
+                row += TEXT("+"); // Mountain
+            }
+        }
+
+        BiomeMap.Add(row);
+    }
+
+    return BiomeMap;
+}
+
+
 
 
 /*
@@ -223,32 +309,6 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
     return NoiseMap;
 }
 */
-void AdjustForOcean(float& heightValue)
-{
-    heightValue *= 0.5f; // Lower the terrain for oceanic regions
-}
-
-void AdjustForIsland(float& heightValue)
-{
-    heightValue *= 1.5f; // Increase the terrain height for island regions
-}
-
-void AdjustForRiver(float& heightValue)
-{
-    heightValue *= 0.8f; // Lower the terrain slightly for rivers
-}
-
-void AdjustForMountain(float& heightValue)
-{
-    heightValue *= 2.0f; // Double the terrain height for mountains
-}
-
-void AdjustForPlains(float& heightValue)
-{
-    heightValue *= 1.2f; // Slightly increase the terrain height for plains
-}
-
-
 
 
 /*
@@ -284,44 +344,3 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 }
 */
 
-
-
-
-TArray<FString> ADiamondSquare::CreateBiomeMap() {
-    // Define some simple proportions for each biome based on ySize.
-    int32 ForestEnd = YSize * 0.3;
-    int32 SnowEnd = YSize * 0.6;
-    int32 DesertEnd = YSize * 0.9;
-
-    for (int32 y = 0; y < YSize; y++) {
-        FString row;
-
-        for (int32 x = 0; x < XSize; x++) {
-            if (y < ForestEnd) {
-                row += TEXT("% ");
-            }
-            else if (y < SnowEnd) {
-                row += TEXT("I ");
-            }
-            else if (y < DesertEnd) {
-                row += TEXT("O ");
-            }
-            else {
-                // Adding the river and mountain based on the x-coordinate.
-                if (x == XSize / 2) {
-                    row += TEXT("| ");
-                }
-                else if (x > XSize * 0.75) {
-                    row += TEXT("+ ");
-                }
-                else {
-                    row += TEXT("I ");
-                }
-            }
-        }
-
-        BiomeMap.Add(row);
-    }
-
-    return BiomeMap;
-}
