@@ -66,4 +66,7 @@ private:
     void CreateVertices(const TArray<TArray<float>>& NoiseMap);
     void CreateTriangles();
     TArray<TArray<float>> GeneratePerlinNoiseMap();
+    TArray<FString> CreateBiomeMap();
+
+    TArray<FString> BiomeMap;
 };
