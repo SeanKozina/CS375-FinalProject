@@ -60,7 +60,6 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 
     if (ProceduralMesh)
     {
-        TArray<FColor> VertexColors;
 
         for (int X = 0; X < XSize; ++X)
         {
@@ -86,17 +85,12 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
                 {
                     Color = FLinearColor::Red;
                 }
-
-                VertexColors.Add(Color.ToFColor(false));
+                Colors.Add(Color.ToFColor(false));
 
                 Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier));
                 UV0.Add(FVector2D(X * UVScale, Y * UVScale));
             }
         }
-
-        // If you already have Colors array and the Vertices array to be of the same size, you can skip re-assigning.
-        Colors = VertexColors;
-
         Normals.Init(FVector(0.0f, 0.0f, 1.0f), Vertices.Num());
         Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
