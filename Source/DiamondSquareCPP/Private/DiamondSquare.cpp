@@ -71,11 +71,11 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 
                 if (Z >= 0.9f)
                 {
-                    Color = FLinearColor::Green;        
+                    Color = FLinearColor::Blue;        
                 }
                 else if (Z >= 0.7f && Z < 0.9f)
                 {
-                    Color = FLinearColor::Yellow;
+                    Color = FLinearColor::Blue;
                 }
                 else if (Z >= 0.5f && Z < 0.7f)
                 {
@@ -83,9 +83,10 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
                 }
                 else if (Z >= 0.0f && Z < 0.5f)
                 {
-                    Color = FLinearColor::Red;
+                    Color = FLinearColor::Blue;
                 }
                 Colors.Add(Color.ToFColor(false));
+                UE_LOG(LogTemp, Warning, TEXT("R: %f, G: %f, B: %f, A: %f"), Color.R, Color.G, Color.B, Color.A);
 
                 Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier));
                 UV0.Add(FVector2D(X * UVScale, Y * UVScale));
