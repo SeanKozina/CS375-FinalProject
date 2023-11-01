@@ -67,6 +67,8 @@ private:
     void CreateTriangles();
     TArray<TArray<float>> GeneratePerlinNoiseMap();
     TArray<FString> CreateBiomeMap();
+    float GetInterpolatedHeight(float heightValue, char biomeType);
+
 
     TArray<FString> BiomeMap;
 };

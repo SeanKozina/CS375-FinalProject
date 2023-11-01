@@ -24,6 +24,9 @@ ADiamondSquare::ADiamondSquare()
 void ADiamondSquare::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
+
+    FLinearColor Color = FLinearColor::Black;
+    Colors.Add(Color.ToFColor(false));
     if (recreateMesh) {
         auto NoiseMap = GeneratePerlinNoiseMap();
 
@@ -55,40 +58,66 @@ void ADiamondSquare::Tick(float DeltaTime)
 }
 
 
+void ADiamondSquare::CreateTriangles()
+{
+    for (int X = 0; X < XSize - 1; ++X)
+    {
+        for (int Y = 0; Y < YSize - 1; ++Y)
+        {
+            int VertexIndex = X * YSize + Y;
+
+            // First triangle (clockwise winding order)
+            Triangles.Add(VertexIndex);                  // Bottom left
+            Triangles.Add(VertexIndex + YSize + 1);      // Top right
+            Triangles.Add(VertexIndex + YSize);          // Top left
+
+            // Second triangle (clockwise winding order)
+            Triangles.Add(VertexIndex);                  // Bottom left
+            Triangles.Add(VertexIndex + 1);              // Bottom right
+            Triangles.Add(VertexIndex + YSize + 1);      // Top right
+        }
+    }
+}
+
+
+
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 {
-
+    Colors.Empty();
     if (ProceduralMesh)
     {
-
+        FLinearColor Color;
         for (int X = 0; X < XSize; ++X)
         {
             for (int Y = 0; Y < YSize; ++Y)
             {
                 float Z = NoiseMap[X][Y];
                 UE_LOG(LogDiamondSquare, Log, TEXT("Value of Z at [%d][%d]: %f"), X, Y, Z);
-                FLinearColor Color;
 
                 if (Z >= 0.9f)
                 {
+                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
                     Color = FLinearColor::Blue;        
                 }
-                else if (Z >= 0.7f && Z < 0.9f)
+                else if (Z >= 0.7f)
                 {
+                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
                     Color = FLinearColor::Blue;
                 }
-                else if (Z >= 0.5f && Z < 0.7f)
+                else if (Z >= 0.5f)
                 {
+                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
                     Color = FLinearColor::Blue;
                 }
-                else if (Z >= 0.0f && Z < 0.5f)
+                else if (Z >= 0.0f)
                 {
+                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
                     Color = FLinearColor::Blue;
                 }
                 Colors.Add(Color.ToFColor(false));
                 UE_LOG(LogTemp, Warning, TEXT("R: %f, G: %f, B: %f, A: %f"), Color.R, Color.G, Color.B, Color.A);
 
-                Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier));
+                Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier * Scale));
                 UV0.Add(FVector2D(X * UVScale, Y * UVScale));
             }
         }
@@ -96,33 +125,42 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
         Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
     }
-}
+    // Assume the existence of the arrays 'Colors' and 'Vertices'
+// Assume xsize and ysize are provided as the dimensions of a 2D grid
 
+    // Log the size of the Colors array
+    UE_LOG(LogTemp, Warning, TEXT("Size of Colors array: %d"), Colors.Num());
 
-
-void ADiamondSquare::CreateTriangles()
-{
-    int Vertex = 0;
-    for (int X = 0; X < XSize - 1; ++X)
-    {
-        for (int Y = 0; Y < YSize - 1; ++Y)
-        {
-            //int Vertex = X * YSize + Y;
-
-            // First triangle (swapping the winding order)
-            Triangles.Add(Vertex); // Bottom left corner
-            Triangles.Add(Vertex + 1); // Bottom right corner
-            Triangles.Add(Vertex + YSize + 1); // Top left corner
-
-            // Second triangle (swapping the winding order)
-            Triangles.Add(Vertex + 1); // Bottom right corner
-            Triangles.Add(Vertex + YSize + 2); // Top right corner
-            Triangles.Add(Vertex + YSize + 1); // Top left corner
-            Vertex++;
-        }
-        Vertex++;
+    // Log the size of the Vertices array
+    UE_LOG(LogTemp, Warning, TEXT("Size of Vertices array: %d"), Vertices.Num());
+    if (Colors.Num() != Vertices.Num()) {
+        UE_LOG(LogTemp, Error, TEXT("Error: Colors array and Vertices array are not the same size."));
     }
+    else {
+        // Arrays are the same size, proceed with the check
+        for (int X = 0; X < XSize; ++X) {
+            for (int Y = 0; Y < YSize; ++Y) {
+                int Index = Y * XSize + X; // Calculate the 1D index based on 2D coordinates
+                if (Index < Colors.Num() && Index < Vertices.Num()) { // Check if the index is within the range of the arrays
+                    FColor Color = Colors[Index]; // Convert the color at the current index
+                    FVector Vertex = Vertices[Index]; // Get the vertex at the current index
+
+                    // Assuming the FVector and FColor are properly defined elsewhere
+                    UE_LOG(LogTemp, Warning, TEXT("Vertex [%d, %d]: X: %f, Y: %f, Z: %f"), X, Y, Vertex.X, Vertex.Y, Vertex.Z);
+                    UE_LOG(LogTemp, Warning, TEXT("Color [%d, %d]: R: %d, G: %d, B: %d, A: %d"), X, Y, Color.R, Color.G, Color.B, Color.A);
+                }
+                else {
+                    // The index is out of range, meaning there's no vertex or color at this grid location
+                    UE_LOG(LogTemp, Error, TEXT("Error: No vertex or color at location [%d, %d]."), X, Y);
+                }
+            }
+        }
+    }
+
 }
+
+
+
 
 
 TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
@@ -184,7 +222,7 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
                 break;
             }
             //NoiseHeight = FMath::Clamp(NoiseHeight,0.0f,1.0f);
-            NoiseMap[X][Y] = NoiseHeight;
+            NoiseMap[X][Y] = GetInterpolatedHeight(NoiseHeight, BiomeMap[Y][X]);
         }
     }
     /*
@@ -220,7 +258,7 @@ float AdjustForRiver(float& heightValue)
 
 float AdjustForMountain(float& heightValue)
 {
-    heightValue = FMath::Lerp(0.4f, 1.0f,heightValue);
+    heightValue = FMath::Clamp(heightValue,0.4f, 1.0f);
     return heightValue; // Double the terrain height for mountains
 }
 
@@ -269,7 +307,7 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
                     row += TEXT("|"); // Forest
                 }
                 else {
-                    row += TEXT("+"); // Desert
+                    row += TEXT("+"); //Mountain
                 }
             }
             else {
@@ -279,11 +317,54 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
 
         BiomeMap.Add(row);
     }
+
+    // Post-process to ensure mountains and oceans are not adjacent.
+    for (int y = 0; y < YSize; y++) {
+        for (int x = 0; x < XSize; x++) {
+            if (BiomeMap[y][x] == TEXT('+')) { // Mountain detected
+                // Check all adjacent tiles.
+                for (int i = -1; i <= 1; i++) {
+                    for (int j = -1; j <= 1; j++) {
+                        if (i == 0 && j == 0) continue; // Skip the mountain tile itself
+                        int adjX = x + i;
+                        int adjY = y + j;
+                        // Check bounds and adjacent ocean tiles
+                        if (adjX >= 0 && adjX < XSize && adjY >= 0 && adjY < YSize &&
+                            BiomeMap[adjY][adjX] == TEXT('O')) {
+                            // Adjust the adjacent ocean to another biome, e.g., forest "|"
+                            BiomeMap[adjY].GetCharArray()[adjX] = TEXT('|');
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     for (const FString& row : BiomeMap) {
         UE_LOG(LogDiamondSquare, Log, TEXT("%s"), *row);
     }
 
     return BiomeMap;
+}
+
+
+float ADiamondSquare::GetInterpolatedHeight(float heightValue, char biomeType)
+{
+    switch (biomeType)
+    {
+    case 'O':
+        return FMath::Lerp(heightValue, AdjustForOcean(heightValue), 0.1f);
+    case 'I':
+        return FMath::Lerp(heightValue, AdjustForIce(heightValue), 0.5f);
+    case '%':
+        return FMath::Lerp(heightValue, AdjustForRiver(heightValue), 0.5f);
+    case '+':
+        return FMath::Lerp(heightValue, AdjustForMountain(heightValue), 0.1f);
+    case '|':
+        return FMath::Lerp(heightValue, AdjustForPlains(heightValue), 0.1f);
+    default:
+        return heightValue;
+    }
 }
 
 
