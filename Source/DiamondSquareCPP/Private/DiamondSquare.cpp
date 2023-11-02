@@ -10,7 +10,7 @@ float AdjustForOcean(float& heightValue);
 float AdjustForPlains(float& heightValue);
 float AdjustForMountain(float& heightValue);
 float AdjustForRiver(float& heightValue);
-float AdjustForIce(float& heightValue);
+float AdjustForSand(float& heightValue);
 
 ADiamondSquare::ADiamondSquare()
 {
@@ -24,9 +24,6 @@ ADiamondSquare::ADiamondSquare()
 void ADiamondSquare::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
-
-    FLinearColor Color = FLinearColor::Black;
-    Colors.Add(Color.ToFColor(false));
     if (recreateMesh) {
         auto NoiseMap = GeneratePerlinNoiseMap();
 
@@ -39,7 +36,7 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
 
         UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 
-        ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+        ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
         ProceduralMesh->SetMaterial(0, Material);
         recreateMesh = false;
     }
@@ -86,36 +83,20 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
     Colors.Empty();
     if (ProceduralMesh)
     {
-        FLinearColor Color;
         for (int X = 0; X < XSize; ++X)
         {
             for (int Y = 0; Y < YSize; ++Y)
             {
                 float Z = NoiseMap[X][Y];
-                UE_LOG(LogDiamondSquare, Log, TEXT("Value of Z at [%d][%d]: %f"), X, Y, Z);
+                TCHAR BiomeChar = BiomeMap[Y][X];
+                //UE_LOG(LogDiamondSquare, Log, TEXT("Value of Z at [%d][%d]: %f"), X, Y, Z);
 
-                if (Z >= 0.9f)
-                {
-                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
-                    Color = FLinearColor::Blue;        
-                }
-                else if (Z >= 0.7f)
-                {
-                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
-                    Color = FLinearColor::Blue;
-                }
-                else if (Z >= 0.5f)
-                {
-                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
-                    Color = FLinearColor::Blue;
-                }
-                else if (Z >= 0.0f)
-                {
-                    UE_LOG(LogDiamondSquare, Log, TEXT("Blue"));
-                    Color = FLinearColor::Blue;
-                }
+                Color = GetColorBasedOnHeight(Z);
+
+                Color = GetColorForBiome(Color, BiomeChar, Z);
+
                 Colors.Add(Color.ToFColor(false));
-                UE_LOG(LogTemp, Warning, TEXT("R: %f, G: %f, B: %f, A: %f"), Color.R, Color.G, Color.B, Color.A);
+                //UE_LOG(LogTemp, Warning, TEXT("R: %f, G: %f, B: %f, A: %f"), Color.R, Color.G, Color.B, Color.A);
 
                 Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier * Scale));
                 UV0.Add(FVector2D(X * UVScale, Y * UVScale));
@@ -126,7 +107,7 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
     }
     // Assume the existence of the arrays 'Colors' and 'Vertices'
-// Assume xsize and ysize are provided as the dimensions of a 2D grid
+    // Assume xsize and ysize are provided as the dimensions of a 2D grid
 
     // Log the size of the Colors array
     UE_LOG(LogTemp, Warning, TEXT("Size of Colors array: %d"), Colors.Num());
@@ -142,12 +123,12 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
             for (int Y = 0; Y < YSize; ++Y) {
                 int Index = Y * XSize + X; // Calculate the 1D index based on 2D coordinates
                 if (Index < Colors.Num() && Index < Vertices.Num()) { // Check if the index is within the range of the arrays
-                    FColor Color = Colors[Index]; // Convert the color at the current index
+                    FColor FColor = Colors[Index]; // Convert the color at the current index
                     FVector Vertex = Vertices[Index]; // Get the vertex at the current index
 
                     // Assuming the FVector and FColor are properly defined elsewhere
                     UE_LOG(LogTemp, Warning, TEXT("Vertex [%d, %d]: X: %f, Y: %f, Z: %f"), X, Y, Vertex.X, Vertex.Y, Vertex.Z);
-                    UE_LOG(LogTemp, Warning, TEXT("Color [%d, %d]: R: %d, G: %d, B: %d, A: %d"), X, Y, Color.R, Color.G, Color.B, Color.A);
+                    UE_LOG(LogTemp, Warning, TEXT("Color [%d, %d]: R: %d, G: %d, B: %d, A: %d"), X, Y, FColor.R, FColor.G, FColor.B, FColor.A);
                 }
                 else {
                     // The index is out of range, meaning there's no vertex or color at this grid location
@@ -157,6 +138,57 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
         }
     }
 
+}
+
+
+FLinearColor ADiamondSquare::GetColorBasedOnHeight(float Z)
+{
+    if (Z >= 0.9f)
+    {
+        // Snow
+        Color = FLinearColor::White;
+    }
+    else if (Z >= 0.75f)
+    {
+        // Mountain Rock
+        Color = FLinearColor(0.50f, 0.50f, 0.50f);
+    }
+    else if (Z >= 0.6f)
+    {
+        // Forest Green
+        Color = FLinearColor(0.13f, 0.55f, 0.13f);
+    }
+    else if (Z >= 0.45f)
+    {
+        // Grass Green
+        Color = FLinearColor(0.24f, 0.70f, 0.44f);
+    }
+    else if (Z >= 0.2f)
+    {
+        // Light Grass Green
+        Color = FLinearColor(0.42f, 0.75f, 0.44f);
+    }
+    else if (Z >= 0.15f)
+    {
+        // Sand / Beach
+        Color = FLinearColor(0.82f, 0.66f, 0.42f);
+    }
+    else if (Z >= 0.09f)
+    {
+        // Shallow Water
+        Color = FLinearColor(0.50f, 0.73f, 0.93f);
+    }
+    else if (Z >= 0.02f)
+    {
+        // Deeper Water
+        Color = FLinearColor(0.28f, 0.46f, 0.80f);
+    }
+    else
+    {
+        // Deepest Water
+        Color = FLinearColor(0.05f, 0.19f, 0.57f);
+    }
+    return Color;
 }
 
 
@@ -208,8 +240,8 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
             case 'O':
                 NoiseHeight = AdjustForOcean(NoiseHeight);
                 break;
-            case 'I':
-                NoiseHeight = AdjustForIce(NoiseHeight);
+            case 'S':
+                NoiseHeight = AdjustForSand(NoiseHeight);
                 break;
             case '%':
                 NoiseHeight = AdjustForRiver(NoiseHeight);
@@ -242,12 +274,12 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 
 float AdjustForOcean(float& heightValue)
 {
-    return heightValue = FMath::Lerp(0.0f,0.2f,0.1f); // Lower the terrain for oceanic regions
+    return heightValue = FMath::Lerp(0.0f,0.15f,0.3f); // Lower the terrain for oceanic regions
 }
 
-float AdjustForIce(float& heightValue)
+float AdjustForSand(float& heightValue)
 {
-    return heightValue = FMath::Lerp(0.2f, 0.3f, heightValue);
+    return heightValue = FMath::Lerp(0.15f, 0.2f, .4f);
 }
 
 float AdjustForRiver(float& heightValue)
@@ -264,7 +296,7 @@ float AdjustForMountain(float& heightValue)
 
 float AdjustForPlains(float& heightValue)
 {
-    heightValue = FMath::Lerp(0.2f, 0.4f, heightValue);
+    heightValue = FMath::Lerp(0.2f, 0.4f, 0.6f);
     return heightValue; // Slightly increase the terrain height for plains
 }
 
@@ -293,7 +325,7 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
             // Biome determination.
             if (altitudeNoise < 0.2) {
                 if (latitudeNoise < 0.2 || latitudeNoise > 0.8) {
-                    row += TEXT("I"); // Snow (Tundra at low altitudes and northern/southern latitudes)
+                    row += TEXT("S"); // Snow (Tundra at low altitudes and northern/southern latitudes)
                 }
                 else {
                     row += TEXT("O"); // Ocean or lowlands
@@ -354,8 +386,8 @@ float ADiamondSquare::GetInterpolatedHeight(float heightValue, char biomeType)
     {
     case 'O':
         return FMath::Lerp(heightValue, AdjustForOcean(heightValue), 0.1f);
-    case 'I':
-        return FMath::Lerp(heightValue, AdjustForIce(heightValue), 0.5f);
+    case 'S':
+        return FMath::Lerp(heightValue, AdjustForSand(heightValue), 0.5f);
     case '%':
         return FMath::Lerp(heightValue, AdjustForRiver(heightValue), 0.5f);
     case '+':
@@ -364,6 +396,33 @@ float ADiamondSquare::GetInterpolatedHeight(float heightValue, char biomeType)
         return FMath::Lerp(heightValue, AdjustForPlains(heightValue), 0.1f);
     default:
         return heightValue;
+    }
+}
+
+
+FLinearColor ADiamondSquare::GetColorForBiome(FLinearColor BaseColor, TCHAR BiomeChar, float Z)
+{
+    // Optionally, modify the BaseColor based on the biome character and the height Z
+    switch (BiomeChar)
+    {
+    case 'O': // Ocean
+        // Mix some blue into the base color for ocean biomes, for example
+        return FMath::Lerp(BaseColor, FLinearColor::Blue, 0.5f);
+    case 'S': // Sand
+        // Make it more yellow for beach biomes
+        return FMath::Lerp(BaseColor, FLinearColor(0.99f,0.88f,0.40f), 0.5f);
+    case '%': // River
+        // Make it more blue for rivers
+        return FMath::Lerp(BaseColor, FLinearColor(0.28f, 0.46f, 0.80f), 0.5f);
+    case '+': // Mountain
+        // Keep mountain color or adjust as needed
+        return BaseColor;
+    case '|': // Plains
+        // Adjust green for plains if necessary
+        return FMath::Lerp(BaseColor, FLinearColor(0.24f, 0.70f, 0.44f), 0.5f);
+    default:
+        // No biome or unknown biome, use the base color
+        return BaseColor;
     }
 }
 

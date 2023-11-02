@@ -61,7 +61,12 @@ private:
     TArray<FVector> Normals;
     TArray<struct FProcMeshTangent> Tangents;
 
+    FLinearColor Color;
     TArray<FColor> Colors;
+        
+    FLinearColor GetColorForBiome(FLinearColor BaseColor, TCHAR BiomeChar, float Z);
+    FLinearColor GetColorBasedOnHeight(float Z);
+
 
     void CreateVertices(const TArray<TArray<float>>& NoiseMap);
     void CreateTriangles();
