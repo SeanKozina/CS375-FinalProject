@@ -43,6 +43,19 @@ public:
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
         float Persistence = 0.5f;
 
+
+        // This struct holds the environmental conditions of a biome.
+        struct BiomeInfo {
+            float altitude;
+            float temperature;
+            float humidity;
+            // Constructor for easy initialization
+            BiomeInfo(float alt, float temp, float hum) : altitude(alt), temperature(temp), humidity(hum) {}
+        };
+
+
+
+
 protected:
     virtual void BeginPlay() override;
     virtual void OnConstruction(const FTransform& Transform) override;
@@ -61,9 +74,56 @@ private:
     TArray<FVector> Normals;
     TArray<struct FProcMeshTangent> Tangents;
 
+    FLinearColor Color;
     TArray<FColor> Colors;
+
+    FLinearColor GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeType);
 
     void CreateVertices(const TArray<TArray<float>>& NoiseMap);
     void CreateTriangles();
     TArray<TArray<float>> GeneratePerlinNoiseMap();
+
+    TArray<FString> CreateBiomeMap();
+
+    void PostProcessBiomeMap();
+    FString DetermineBiome(float altitude, float temperature, float humidity);
+
+    float GetInterpolatedHeight(float heightValue, TCHAR biomeType);
+
+    int32 Width;
+    TArray<FString> BiomeMap;
+
+
+    FString GetBiomeAt(int32 X, int32 Y) const;
+    void SetBiomeAt(int32 X, int32 Y, const FString& Biome);
+
+
+    bool IsInBounds(int32 X, int32 Y);
+
+
+    // Height adjustment functions for biomes
+    float AdjustForOcean(float& heightValue);
+    float AdjustForSand(float& heightValue);
+    float AdjustForMountain(float& heightValue);
+    float AdjustForPlains(float& heightValue);
+    float AdjustForSnow(float& heightValue);
+    float AdjustForForest(float& heightValue);
+    float AdjustForTaiga(float& heightValue);
+    float AdjustForWoodlands(float& heightValue);
+    float AdjustForSnowyMountain(float& heightValue);
+    float AdjustForHighlands(float& heightValue);
+    float AdjustForRiver(float& heightValue);  // If needed
+    float AdjustForSnowyForest(float& heightValue); // If needed
+    float AdjustForOldForest(float& heightValue); // If needed
+    float AdjustForBeach(float& heightValue);
+    float AdjustForJungle(float& heightValue);
+    float AdjustForConiferousForest(float& heightValue);
+    float AdjustForSwamp(float& heightValue);
+
+
+
+
+
+
+
 };
