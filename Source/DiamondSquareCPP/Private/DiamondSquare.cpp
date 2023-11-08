@@ -178,15 +178,12 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeT
     case 'I': // Snow, Tundra
         Color = FLinearColor::White;
         break;
-    case '%': // Snowy Forest
+    case 'K': // Snowy Forest
         Color = FLinearColor(0.85f, 0.85f, 0.85f); // Lighter shade for snowy overlay on trees
         break;
-    case '+': // Mountain
+    case 'M': // Mountain
         if (Z > 0.8f) Color = FLinearColor::White; // Snow capped peaks
         else Color = FLinearColor(0.50f, 0.50f, 0.50f); // Mountain Rock
-        break;
-    case '|': // Forest
-        Color = FLinearColor(0.13f, 0.55f, 0.13f); // Forest Green
         break;
     case 'P': // Plains
         Color = FLinearColor(0.24f, 0.70f, 0.44f); // Grass Green
@@ -216,9 +213,6 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeT
     case 'S': // Steppe
         Color = FLinearColor(0.75f, 0.75f, 0.50f); // Dry grass color
         break;
-    case 'M': // Snowy Mountains
-        Color = FLinearColor::White; // Snow capped at any Z
-        break;
     case 'J': // Jungle
         Color = FLinearColor(0.25f, 0.50f, 0.20f); 
         break;
@@ -228,7 +222,15 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeT
     case 'C': // Con Forest
         Color = FLinearColor(0.149f, 0.243f, 0.192f);
         break;
-
+    case 'U': // Tundra
+        Color = FLinearColor(0.48f, 0.53f, 0.5f); // Cold and sparse vegetation color
+        break;
+    case 'V': // Savanna
+        Color = FLinearColor(0.85f, 0.78f, 0.45f); // Yellowish grass color
+        break;
+    case 'L': // Rainforest
+        Color = FLinearColor(0.00f, 0.39f, 0.00f); // Deep green
+        break;
 
     default:
         // If the biome type is unrecognized, use a default color (gray).
@@ -242,91 +244,9 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeT
 
 
 
-float ADiamondSquare::AdjustForOcean(float& heightValue) {
-    return heightValue = FMath::Lerp(0.0f, 0.01f, 0.05f); // Flatten terrain for ocean regions
-}
-
-float ADiamondSquare::AdjustForSand(float& heightValue) {
-    return heightValue = FMath::Lerp(0.15f, 0.2f, 0.4f); // Gently raise terrain for sandy regions
-}
-
-float ADiamondSquare::AdjustForMountain(float& heightValue) {
-    return heightValue = FMath::Clamp(heightValue, 1.0f, 0.5f); // Ensure mountains are within a certain range
-}
-
-float ADiamondSquare::AdjustForPlains(float& heightValue) {
-    return heightValue = FMath::Lerp(0.15f, 0.25f, 0.6f); // Slightly raise terrain for plains
-}
-
-float ADiamondSquare::AdjustForSnow(float& heightValue) {
-    return heightValue = FMath::Lerp(heightValue, 0.85f, 0.2f); // Keep snow regions at higher altitudes
-}
-
-float ADiamondSquare::AdjustForForest(float& heightValue) {
-    return heightValue = FMath::Lerp(0.3f, 0.45f, heightValue); // Slightly raise terrain for forest regions
-}
-
-float ADiamondSquare::AdjustForTaiga(float& heightValue) {
-    return heightValue = FMath::Lerp(heightValue, 0.3f, 0.25f); // Moderate terrain height for taiga
-}
-
-float ADiamondSquare::AdjustForWoodlands(float& heightValue) {
-    return heightValue = FMath::Lerp(0.32f, 0.55f, heightValue); // Variable terrain for woodlands
-}
-
-float ADiamondSquare::AdjustForSnowyMountain(float& heightValue) {
-    return heightValue = FMath::Clamp(heightValue, 0.6f, 1.0f); // Ensure snowy mountains are tall
-}
-
-float ADiamondSquare::AdjustForHighlands(float& heightValue) {
-    return heightValue = FMath::Lerp(0.4f, 0.7f, heightValue); // Higher than plains, lower than mountains
-}
-
-// Example of river adjustment (if needed)
-float ADiamondSquare::AdjustForRiver(float& heightValue) {
-    return heightValue *= 0.8f; // Lower terrain for river
-}
-
-// Additional examples (if other biomes are present)
-float ADiamondSquare::AdjustForSnowyForest(float& heightValue) {
-    return heightValue = FMath::Lerp(0.3f, 0.45f, heightValue); // Elevate for snowy forests
-}
-
-float ADiamondSquare::AdjustForOldForest(float& heightValue) {
-    return heightValue = FMath::Lerp(0.3f, 0.45f, heightValue); // Adjust height for old forests
-}
-
-
-float ADiamondSquare::AdjustForBeach(float& heightValue) {
-    // Logic to adjust terrain for beaches
-    return heightValue = FMath::Lerp(0.05f, 0.33f, heightValue); // This is an example
-}
-
-float ADiamondSquare::AdjustForJungle(float& heightValue) {
-    // Logic to adjust terrain for jungle regions
-    return heightValue = FMath::Lerp(0.3f, 0.45f, heightValue); // This is an example
-}
-
-float ADiamondSquare::AdjustForConiferousForest(float& heightValue) {
-    // Logic to adjust terrain for coniferous forests
-    return heightValue = FMath::Lerp(0.3f, 0.45f, heightValue); // This is an example
-}
-
-float ADiamondSquare::AdjustForSwamp(float& heightValue) {
-    // Logic to adjust terrain for swamps
-    return heightValue = FMath::Lerp(0.3f, 0.4f, heightValue); // This is an example
-}
-
-
 
 TArray<FString> ADiamondSquare::CreateBiomeMap() {
     BiomeMap.Empty();
-
-    // Constants to scale the noise functions for different parameters.
-    const float AltitudeScale = 0.03f;
-    const float TemperatureScale = 0.1f;
-    const float HumidityScale = 0.1f;
-
     // Generate noise maps for temperature and humidity
     TArray<float> TemperatureMap;
     TArray<float> HumidityMap;
@@ -379,24 +299,30 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
 // Biome determination 
 FString ADiamondSquare::DetermineBiome(float altitude, float temperature, float humidity) {
     // Normalize temperature and humidity between 0 and 1 if not already.
-    temperature = FMath::Clamp((temperature + 1) / 2, 0.0f, 1.0f);
-    humidity = FMath::Clamp((humidity + 1) / 2, 0.0f, 1.0f);
+    temperature = FMath::Clamp(temperature, 0.0f, 1.0f);
+    humidity = FMath::Clamp(humidity, 0.0f, 1.0f);
 
     // Altitude thresholds for different terrain types.
-    const float SeaLevel = 0.3f;
-    const float PlainsLevel = 0.4f;
-    const float MountainLevel = 0.6f;
+    const float SeaLevel = 0.1f;
+    const float PlainsLevel = 0.3f;
+    const float MountainLevel = 0.7f;
+    const float HighlandLevel = 0.5f;
 
     // Temperature thresholds for different climates.
     const float SnowTemperature = 0.2f;
     const float DesertTemperature = 0.8f;
+    const float TundraTemperature = 0.3f;
+    const float SavannaTemperature = 0.7f;
+    const float TaigaTemperature = 0.4f;
 
     // Humidity thresholds for determining dry/wet biomes.
     const float DryHumidity = 0.3f;
     const float WetHumidity = 0.7f;
+    const float RainforestHumidity = 0.8f;
 
     // Determine biomes based on altitude, temperature, and humidity.
     if (altitude < SeaLevel) {
+        // Ocean-related biomes
         if (temperature > DesertTemperature && humidity < DryHumidity) {
             return TEXT("B"); // Beach
         }
@@ -405,50 +331,64 @@ FString ADiamondSquare::DetermineBiome(float altitude, float temperature, float 
         }
     }
     else if (altitude < PlainsLevel) {
-        if (temperature < SnowTemperature) {
-            return TEXT("I"); // Snow
-        }
-        else if (temperature > DesertTemperature) {
-            return TEXT("D"); // Desert
-        }
-        else if (humidity < DryHumidity) {
-            return TEXT("P"); // Plains
-        }
-        else if (humidity > WetHumidity) {
-            return TEXT("J"); // Jungle
-        }
-        else {
-            return TEXT("F"); // Forest
-        }
-    }
-    else if (altitude < MountainLevel) {
-        if (humidity < DryHumidity) {
-            if (temperature < SnowTemperature) {
-                return TEXT("T"); // Taiga
+        // Plains-related biomes
+        if (temperature < TundraTemperature) {
+            if (humidity > WetHumidity) {
+                return TEXT("K"); // Snowy Forest
+            }
+            else if (temperature < SnowTemperature) {
+                return TEXT("U"); // Tundra
             }
             else {
-                return TEXT("S"); // Steppe
+                return TEXT("I"); // Ice Plains
             }
         }
         else if (humidity > WetHumidity) {
             return TEXT("X"); // Swamp
         }
+        else if (temperature > DesertTemperature && humidity < DryHumidity) {
+            return TEXT("D"); // Desert
+        }
+        else if (humidity > DryHumidity && humidity < WetHumidity) {
+            return TEXT("S"); // Steppe
+        }
         else {
-            return TEXT("W"); // Woodlands
+            return TEXT("P"); // Plains
         }
     }
-    else {
-        if (temperature < SnowTemperature) {
-            return TEXT("M"); // Snowy Mountains
+    else if (altitude < HighlandLevel) {
+        // Mountain foothills related biomes
+        if (temperature < TaigaTemperature && humidity > DryHumidity && humidity < WetHumidity) {
+            return TEXT("T"); // Taiga
         }
-        else if (humidity < DryHumidity) {
-            return TEXT("C"); // Coniferous Forest
+        else if (humidity > WetHumidity && temperature > SnowTemperature && temperature < TaigaTemperature) {
+            return TEXT("F"); // Forest
+        }
+        else if (humidity > RainforestHumidity && temperature > TaigaTemperature) {
+            return TEXT("L"); // Rainforest
+        }
+        else if (humidity < DryHumidity && temperature > DesertTemperature) {
+            return TEXT("V"); // Savanna
+        }
+        else if (humidity > DryHumidity && humidity < WetHumidity) {
+            return TEXT("W"); // Woodlands
         }
         else {
             return TEXT("H"); // Highlands
         }
     }
+    else {
+        // For altitudes above HighlandLevel, likely snow-capped peaks
+        return TEXT("M"); // Snowy Mountains
+    }
+
+    // In theory, the code should never reach this point.
+    return TEXT("/"); // Something went wrong
 }
+
+
+
+
 
 
 
@@ -498,70 +438,149 @@ void ADiamondSquare::PostProcessBiomeMap() {
 
 float ADiamondSquare::GetInterpolatedHeight(float heightValue, TCHAR biomeType)
 {
-    // Biomes: Add or revise as necessary for the complete set of biomes in the simulation.
-    // O: Ocean
-    // I: Ice/Snow or Tundra
-    // D: Desert
-    // P: Plains
-    // F: Forest
-    // T: Taiga
-    // W: Woodlands
-    // M: Snowy Mountains
-    // H: Highlands
-    // '%': Snowy Forest
-    // '|': Forest
-    // '+': Mountain
-    // Additional biomes not covered by the previous code:
-    // R: River
-    // B: Beach
-    // J: Jungle
-    // C: Coniferous Forest (if different from 'F' and '|')
-    // X: Swamp
-
     switch (biomeType)
     {
     case 'O': // Ocean
-        return FMath::Lerp(heightValue, AdjustForOcean(heightValue), 0.1f);
-    case 'I': // Ice/Snow or Tundra
-        return FMath::Lerp(heightValue, AdjustForSnow(heightValue), 0.1f);
-    case 'D': // Desert
-        return FMath::Lerp(heightValue, AdjustForSand(heightValue), 0.5f);
+        return AdjustForOcean(heightValue);
+    case 'I': // Snow, Tundra
+        return AdjustForSnow(heightValue);
+    case 'K': // Snowy Forest
+        return AdjustForSnowyForest(heightValue);
+    case 'M': // Mountain
+        return AdjustForMountain(heightValue);
     case 'P': // Plains
-        return FMath::Lerp(heightValue, AdjustForPlains(heightValue), 0.1f);
-    case 'F': // Forest
-        return FMath::Lerp(heightValue, AdjustForForest(heightValue), 0.1f);
-    case 'T': // Taiga
-        return FMath::Lerp(heightValue, AdjustForTaiga(heightValue), 0.1f);
-    case 'W': // Woodlands
-        return FMath::Lerp(heightValue, AdjustForWoodlands(heightValue), 0.1f);
-    case 'M': // Snowy Mountains
-        return FMath::Lerp(heightValue, AdjustForSnowyMountain(heightValue), 0.1f);
-    case 'H': // Highlands
-        return FMath::Lerp(heightValue, AdjustForHighlands(heightValue), 0.1f);
-    case 'R': // River
-        return FMath::Lerp(heightValue, AdjustForRiver(heightValue), 0.1f);
+        return AdjustForPlains(heightValue);
     case 'B': // Beach
-        return FMath::Lerp(heightValue, AdjustForBeach(heightValue), 0.2f);
+        return AdjustForBeach(heightValue);
+    case 'D': // Desert
+        return AdjustForDesert(heightValue);
+    case 'R': // River
+        return AdjustForRiver(heightValue);
+    case 'T': // Taiga
+        return AdjustForTaiga(heightValue);
+    case 'W': // Woodlands
+        return AdjustForWoodlands(heightValue);
+    case 'H': // Highlands
+        return AdjustForHighlands(heightValue);
+    case 'F': // Regular Forest
+        return AdjustForForest(heightValue);
+    case 'S': // Steppe
+        return AdjustForSteppe(heightValue);
     case 'J': // Jungle
-        return FMath::Lerp(heightValue, AdjustForJungle(heightValue), 0.1f);
-    case 'C': // Coniferous Forest
-        return FMath::Lerp(heightValue, AdjustForConiferousForest(heightValue), 0.1f);
+        return AdjustForJungle(heightValue);
     case 'X': // Swamp
-        return FMath::Lerp(heightValue, AdjustForSwamp(heightValue), 0.2f);
-    case '%': // Snowy Forest (from old code)
-        return FMath::Lerp(heightValue, AdjustForSnowyForest(heightValue), 0.5f);
-    case '|': // Forest (from old code)
-        return FMath::Lerp(heightValue, AdjustForOldForest(heightValue), 0.1f);
-    case '+': // Mountain
-        return FMath::Lerp(heightValue, AdjustForMountain(heightValue), 0.1f);
+        return AdjustForSwamp(heightValue);
+    case 'C': // Coniferous Forest
+        return AdjustForConiferousForest(heightValue);
+    case 'U': // Tundra
+        return AdjustForTundra(heightValue);
+    case 'V': // Savanna
+        return AdjustForSavanna(heightValue);
+    case 'L': // Rainforest
+        return AdjustForRainforest(heightValue);
     default:
-        // For unrecognized biomes, we could return the original height, 
-        // or handle them appropriately if they have special requirements.
+        // For unrecognized biomes, return the original height
         return heightValue;
     }
 }
 
 
+
+float ADiamondSquare::AdjustForOcean(float& heightValue) {
+    return heightValue = FMath::Lerp(0.0f, 0.01f, 0.05f); // Flatten terrain for ocean regions
+}
+
+float ADiamondSquare::AdjustForMountain(float& heightValue) {
+    return heightValue = FMath::Lerp(0.7f, 1.0f, heightValue); // Ensure mountains are within a certain range
+}
+
+float ADiamondSquare::AdjustForPlains(float& heightValue) {
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Slightly raise terrain for plains
+}
+
+float ADiamondSquare::AdjustForSnow(float& heightValue) {
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Keep snow regions at higher altitudes
+}
+
+float ADiamondSquare::AdjustForForest(float& heightValue) {
+    return heightValue = FMath::Lerp(0.5f, 0.7f, heightValue); // Slightly raise terrain for forest regions
+}
+
+float ADiamondSquare::AdjustForTaiga(float& heightValue) {
+    return heightValue = FMath::Lerp(0.5f, 0.7f, heightValue); // Moderate terrain height for taiga
+}
+
+float ADiamondSquare::AdjustForWoodlands(float& heightValue) {
+    return heightValue = FMath::Lerp(0.5f, 0.7f, heightValue); // Variable terrain for woodlands
+}
+
+float ADiamondSquare::AdjustForSnowyMountain(float& heightValue) {
+    return heightValue = FMath::Clamp(heightValue, 0.8f, 1.0f); // Ensure snowy mountains are tall
+}
+
+float ADiamondSquare::AdjustForHighlands(float& heightValue) {
+    return heightValue = FMath::Lerp(0.5f, 0.7f, heightValue); // Higher than plains, lower than mountains
+}
+
+// Example of river adjustment (if needed)
+float ADiamondSquare::AdjustForRiver(float& heightValue) {
+    return heightValue *= 0.8f; // Lower terrain for river
+}
+
+// Additional examples (if other biomes are present)
+float ADiamondSquare::AdjustForSnowyForest(float& heightValue) {
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Elevate for snowy forests
+}
+
+float ADiamondSquare::AdjustForOldForest(float& heightValue) {
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Adjust height for old forests
+}
+
+
+float ADiamondSquare::AdjustForBeach(float& heightValue) {
+    // Logic to adjust terrain for beaches
+    return heightValue = FMath::Lerp(0.02f, 0.1f, heightValue); // This is an example
+}
+
+float ADiamondSquare::AdjustForJungle(float& heightValue) {
+    // Logic to adjust terrain for jungle regions
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // This is an example
+}
+
+float ADiamondSquare::AdjustForConiferousForest(float& heightValue) {
+    // Logic to adjust terrain for coniferous forests
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // This is an example
+}
+
+float ADiamondSquare::AdjustForSwamp(float& heightValue) {
+    // Logic to adjust terrain for swamps
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // This is an example
+}
+
+float ADiamondSquare::AdjustForDesert(float& heightValue) {
+    // Logic to adjust terrain for desert regions
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Slightly raise terrain for desert regions
+}
+
+float ADiamondSquare::AdjustForSavanna(float& heightValue) {
+    // Logic to adjust terrain for savanna regions
+    return heightValue = FMath::Lerp(0.5f, 0.7f, heightValue); // Ensure savanna is relatively flat but slightly elevated
+}
+
+float ADiamondSquare::AdjustForRainforest(float& heightValue) {
+    // Logic to adjust terrain for rainforest regions
+    return heightValue = FMath::Lerp(0.5f, 0.7f, heightValue); // Provide varied terrain for rainforest
+}
+
+float ADiamondSquare::AdjustForSteppe(float& heightValue) {
+    // Logic to adjust terrain for steppe regions
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Ensure steppes have a moderate, variable elevation
+}
+
+float ADiamondSquare::AdjustForTundra(float& heightValue) {
+    // Logic to adjust terrain for tundra regions
+    return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Keep tundra flat with slight undulations
+}
 
 
 

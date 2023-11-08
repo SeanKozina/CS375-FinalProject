@@ -44,15 +44,14 @@ public:
         float Persistence = 0.5f;
 
 
-        // This struct holds the environmental conditions of a biome.
-        struct BiomeInfo {
-            float altitude;
-            float temperature;
-            float humidity;
-            // Constructor for easy initialization
-            BiomeInfo(float alt, float temp, float hum) : altitude(alt), temperature(temp), humidity(hum) {}
-        };
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+        float AltitudeScale = 0.03f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+        float TemperatureScale = 0.1f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+        float HumidityScale = 0.1f;
 
 
 
@@ -61,7 +60,7 @@ protected:
     virtual void OnConstruction(const FTransform& Transform) override;
 
     UPROPERTY(EditAnywhere)
-        UMaterialInterface* Material;
+    UMaterialInterface* Material;
 
 public:
     virtual void Tick(float DeltaTime) override;
@@ -90,20 +89,10 @@ private:
 
     float GetInterpolatedHeight(float heightValue, TCHAR biomeType);
 
-    int32 Width;
     TArray<FString> BiomeMap;
-
-
-    FString GetBiomeAt(int32 X, int32 Y) const;
-    void SetBiomeAt(int32 X, int32 Y, const FString& Biome);
-
-
-    bool IsInBounds(int32 X, int32 Y);
-
 
     // Height adjustment functions for biomes
     float AdjustForOcean(float& heightValue);
-    float AdjustForSand(float& heightValue);
     float AdjustForMountain(float& heightValue);
     float AdjustForPlains(float& heightValue);
     float AdjustForSnow(float& heightValue);
@@ -119,9 +108,11 @@ private:
     float AdjustForJungle(float& heightValue);
     float AdjustForConiferousForest(float& heightValue);
     float AdjustForSwamp(float& heightValue);
-
-
-
+    float AdjustForDesert(float& heightValue);
+    float AdjustForSavanna(float& heightValue);
+    float AdjustForRainforest(float& heightValue);
+    float AdjustForSteppe(float& heightValue);
+    float AdjustForTundra(float& heightValue);
 
 
 
