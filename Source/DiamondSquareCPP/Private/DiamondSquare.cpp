@@ -16,32 +16,63 @@ ADiamondSquare::ADiamondSquare()
 }
 
 
+// ADiamondSquare::OnConstruction
+// -------------------------------
+// Purpose: 
+//   Constructs a procedural mesh for the ADiamondSquare class. This function is called
+//   when an instance of ADiamondSquare is constructed or modified in the Unreal Editor.
+//   It uses Perlin noise for vertex generation and creates a mesh with calculated normals
+//   and tangents, applying a specified material.
+//
+// Parameters:
+//   - const FTransform& Transform: The transformation (position, rotation, scale) applied to the object.
+//
+// Usage:
+//   This function is automatically invoked during the construction of an ADiamondSquare object
+//   or when its properties are updated in the editor. It is responsible for the procedural
+//   generation and updating of the mesh based on the current parameters and noise map.
+//
+// Note:
+//   The function depends on Unreal Engine's procedural mesh capabilities and is designed for use
+//   within this game engine.
 void ADiamondSquare::OnConstruction(const FTransform& Transform)
 {
+    // Call the superclass's OnConstruction to handle basic setup
     Super::OnConstruction(Transform);
+
+    // Check if the mesh needs to be recreated
     if (recreateMesh) {
+        // Generate a Perlin noise map for terrain-like structure
         auto NoiseMap = GeneratePerlinNoiseMap();
 
+        // Reset mesh data to prepare for new mesh creation
         Vertices.Reset();
         Triangles.Reset();
         UV0.Reset();
 
+        // Create vertices and triangles for the mesh
         CreateVertices(NoiseMap);
         CreateTriangles();
 
+        // Calculate normals and tangents for the mesh
         UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 
+        // Create the mesh section with the specified data and apply the material
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
         ProceduralMesh->SetMaterial(0, Material);
+
+        // Reset the flag to avoid unnecessary mesh recreation
         recreateMesh = false;
     }
 }
+
 
 void ADiamondSquare::BeginPlay()
 {
 	Super::BeginPlay();
 
 }
+
 
 void ADiamondSquare::Tick(float DeltaTime)
 {
@@ -72,40 +103,69 @@ void ADiamondSquare::CreateTriangles()
 }
 
 
+// ADiamondSquare::CreateVertices
+// ------------------------------
+// Purpose: 
+//   Generates vertices for the procedural mesh based on a noise map and biome map.
+//   Each vertex is assigned a color based on the biome and its height value.
+//
+// Parameters:
+//   - const TArray<TArray<float>>& NoiseMap: A 2D array representing the Perlin noise map.
+//
+// Functionality:
+//   - Iterates over a grid defined by XSize and YSize, using the noise map to determine 
+//     the Z-coordinate (height) of each vertex.
+//   - Assigns colors to vertices based on biome type and height.
+//   - Initializes normals and tangents for the mesh.
+//   - Creates a mesh section with the generated vertices and other mesh data.
+//
+// Assumptions:
+//   - 'XSize' and 'YSize' are the dimensions of the 2D grid.
+//   - 'Colors', 'Vertices', 'Normals', 'Tangents', and 'UV0' are member arrays of the class.
+//   - 'Scale', 'ZMultiplier', and 'UVScale' are scaling factors for the mesh.
+//
+// Logging:
+//   - Logs the size of the Colors and Vertices arrays for debugging purposes.
+//   - Checks and logs if the sizes of the Colors and Vertices arrays are mismatched.
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 {
+    // Prepare the Colors array for new data
     Colors.Empty();
+
+    // Check if the ProceduralMesh is valid
     if (ProceduralMesh)
     {
+        // Iterate over each grid point to create vertices
         for (int X = 0; X < XSize; ++X)
         {
             for (int Y = 0; Y < YSize; ++Y)
             {
-                float Z = NoiseMap[X][Y];
-                TCHAR BiomeChar = BiomeMap[Y][X];
-                //UE_LOG(LogDiamondSquare, Log, TEXT("Value of Z at [%d][%d]: %f"), X, Y, Z);
+                float Z = NoiseMap[X][Y]; // Height value from the noise map
+                TCHAR BiomeChar = BiomeMap[Y][X]; // Biome type for this vertex
 
+                // Determine the color based on biome and height
                 Color = GetColorBasedOnBiomeAndHeight(Z, BiomeChar);
-
                 Colors.Add(Color.ToFColor(false));
-                //UE_LOG(LogTemp, Warning, TEXT("R: %f, G: %f, B: %f, A: %f"), Color.R, Color.G, Color.B, Color.A);
 
+                // Add vertex with calculated position and UV coordinates
                 Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier * Scale));
                 UV0.Add(FVector2D(X * UVScale, Y * UVScale));
             }
         }
+
+        // Initialize normals and tangents for the vertices
         Normals.Init(FVector(0.0f, 0.0f, 1.0f), Vertices.Num());
         Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
+
+        // Create the mesh section with the generated data
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
     }
-    // Assume the existence of the arrays 'Colors' and 'Vertices'
-    // Assume xsize and ysize are provided as the dimensions of a 2D grid
 
-    // Log the size of the Colors array
+    // Log the size of the Colors and Vertices arrays
     UE_LOG(LogTemp, Warning, TEXT("Size of Colors array: %d"), Colors.Num());
-
-    // Log the size of the Vertices array
     UE_LOG(LogTemp, Warning, TEXT("Size of Vertices array: %d"), Vertices.Num());
+
+    // Check and log if Colors and Vertices arrays sizes are mismatched
     if (Colors.Num() != Vertices.Num()) {
         UE_LOG(LogTemp, Error, TEXT("Error: Colors array and Vertices array are not the same size."));
     }
@@ -113,129 +173,104 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 
 
 
+// ADiamondSquare::GeneratePerlinNoiseMap
+// --------------------------------------
+// Purpose: 
+//   Generates a 2D Perlin noise map used for creating terrain-like structures.
+//   The noise map is influenced by a biome map to create varied terrain features.
+//
+// Return:
+//   - TArray<TArray<float>>: A 2D array representing the Perlin noise map.
+//
+// Functionality:
+//   - Generates a Perlin noise map based on specified parameters like scale, octaves, persistence,
+//     and lacunarity, adjusting the noise value based on biome characteristics.
+//   - The noise map is used to determine the height of vertices in the mesh.
+//
+// Assumptions:
+//   - 'XSize' and 'YSize' are the dimensions of the noise map grid.
+//   - 'Scale', 'Octaves', 'Persistence', and 'Lacunarity' are parameters for Perlin noise generation.
+//
+// Logging:
+//   - Logs a warning if the BiomeMap is empty or malformed.
 TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 {
+    // Reset and create the BiomeMap
     BiomeMap.Empty();
     BiomeMap = CreateBiomeMap();
+
+    // Check if the BiomeMap is valid
     if (BiomeMap.Num() == 0 || BiomeMap[0].Len() == 0)
     {
-        // Handle the case where the BiomeMap is empty or malformed.
+        // Log a warning if the BiomeMap is empty or malformed
         UE_LOG(LogTemp, Warning, TEXT("BiomeMap is empty or not correctly formed!"));
         return TArray<TArray<float>>();
     }
 
+    // Initialize the NoiseMap array
     TArray<TArray<float>> NoiseMap;
     NoiseMap.Init(TArray<float>(), XSize);
 
+    // Iterate over the grid to generate noise values
     for (int X = 0; X < XSize; ++X)
     {
         NoiseMap[X].Init(0.0f, YSize);
         for (int Y = 0; Y < YSize; ++Y)
         {
+            // Initialize variables for noise calculation
             float Amplitude = 1.0f;
             float Frequency = 1.0f;
             float NoiseHeight = 0.0f;
+
+            // Calculate noise value across multiple octaves
             for (int Octave = 0; Octave < Octaves; ++Octave)
             {
+                // Determine sample coordinates based on frequency and scale
                 float SampleX = X / Scale * Frequency;
                 float SampleY = Y / Scale * Frequency;
 
-                float PerlinValue = FMath::PerlinNoise2D(FVector2D(SampleX, SampleY)); // Adjust to range [-1, 1]
+                // Generate Perlin noise value
+                float PerlinValue = FMath::PerlinNoise2D(FVector2D(SampleX, SampleY));
                 NoiseHeight += PerlinValue * Amplitude;
 
+                // Adjust amplitude and frequency for next octave
                 Amplitude *= Persistence;
                 Frequency *= Lacunarity;
             }
 
-            // Use the biome map to adjust noise height
+            // Adjust noise height based on biome
             TCHAR BiomeChar = BiomeMap[Y][X];
-            NoiseHeight = GetInterpolatedHeight(NoiseHeight, BiomeChar); // Adjust height based on biome
+            NoiseHeight = GetInterpolatedHeight(NoiseHeight, BiomeChar);
 
-            NoiseMap[X][Y] = FMath::Clamp(NoiseHeight, 0.0f, 1.0f); // Clamp final value just in case
+            // Clamp the noise value to ensure it's within the expected range
+            NoiseMap[X][Y] = FMath::Clamp(NoiseHeight, 0.0f, 1.0f);
         }
     }
 
+    // Return the generated Perlin noise map
     return NoiseMap;
 }
 
 
-
-FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeType)
-{
-    // Assign colors based on biome type. Adjust the shades if needed to reflect different heights within the biomes.
-    switch (biomeType)
-    {
-    case 'O': // Ocean
-        if (Z < 0.1f) Color = FLinearColor(0.05f, 0.19f, 0.57f); // Deep Water
-        else Color = FLinearColor(0.28f, 0.46f, 0.80f); // Shallow Water
-        break;
-    case 'I': // Snow, Tundra
-        Color = FLinearColor::White;
-        break;
-    case 'K': // Snowy Forest
-        Color = FLinearColor(0.85f, 0.85f, 0.85f); // Lighter shade for snowy overlay on trees
-        break;
-    case 'M': // Mountain
-        if (Z > 0.8f) Color = FLinearColor::White; // Snow capped peaks
-        else Color = FLinearColor(0.50f, 0.50f, 0.50f); // Mountain Rock
-        break;
-    case 'P': // Plains
-        Color = FLinearColor(0.24f, 0.70f, 0.44f); // Grass Green
-        break;
-    case 'B': //Beach
-        Color = FLinearColor(0.82f, 0.66f, 0.42f);
-        break;
-    case 'D': // Desert
-        Color = FLinearColor(0.82f, 0.66f, 0.42f); // Sand
-        break;
-    case 'R': // River
-        Color = FLinearColor(0.50f, 0.73f, 0.93f); // Freshwater color
-        break;
-        // Add additional cases for new biome types here.
-    case 'T': // Taiga
-        Color = (Z > 0.5f) ? FLinearColor(0.52f, 0.37f, 0.26f) : FLinearColor(0.20f, 0.40f, 0.20f); // Darker Green for dense forestation
-        break;
-    case 'W': // Woodlands
-        Color = FLinearColor(0.30f, 0.60f, 0.30f); // Green with a bit more yellow
-        break;
-    case 'H': // Highlands
-        Color = FLinearColor(0.45f, 0.55f, 0.30f); // Dryer green with hints of brown
-        break;
-    case 'F': // Regular Forest
-        Color = FLinearColor(0.13f, 0.55f, 0.13f); // Same color as before
-        break;
-    case 'S': // Steppe
-        Color = FLinearColor(0.75f, 0.75f, 0.50f); // Dry grass color
-        break;
-    case 'J': // Jungle
-        Color = FLinearColor(0.25f, 0.50f, 0.20f); 
-        break;
-    case 'X': // Swamp
-        Color = FLinearColor(0.36f, 0.34f, 0.22f); 
-        break;
-    case 'C': // Con Forest
-        Color = FLinearColor(0.149f, 0.243f, 0.192f);
-        break;
-    case 'U': // Tundra
-        Color = FLinearColor(0.48f, 0.53f, 0.5f); // Cold and sparse vegetation color
-        break;
-    case 'V': // Savanna
-        Color = FLinearColor(0.85f, 0.78f, 0.45f); // Yellowish grass color
-        break;
-    case 'L': // Rainforest
-        Color = FLinearColor(0.00f, 0.39f, 0.00f); // Deep green
-        break;
-
-    default:
-        // If the biome type is unrecognized, use a default color (gray).
-        Color = FLinearColor::Red;
-        break;
-    }
-
-    return Color;
-}
-
-
+// ADiamondSquare::CreateBiomeMap
+// ------------------------------
+// Purpose: 
+//   Generates a biome map based on Perlin noise values for altitude, temperature, and humidity.
+//   This map is used to determine the biome type for each point in the terrain.
+//
+// Return:
+//   - TArray<FString>: A 2D array represented as a list of strings, where each character
+//     in a string represents a biome type.
+//
+// Functionality:
+//   - Generates noise maps for temperature and humidity.
+//   - Determines the biome type for each point based on altitude, temperature, and humidity.
+//   - Post-processes the biome map for smoother transitions and adherence to certain rules (like mountain-ocean adjacency).
+//   - Logs the biome map for debugging purposes.
+//
+// Usage:
+//   This function is called during the generation of the procedural terrain to create a
+//   detailed biome map, which influences the color and structure of the terrain.
 TArray<FString> ADiamondSquare::CreateBiomeMap() {
     BiomeMap.Empty();
     // Generate noise maps for temperature and humidity
@@ -286,7 +321,29 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
 }
 
 
-// Biome determination 
+// ADiamondSquare::DetermineBiome
+// ------------------------------
+// Purpose: 
+//   Determines the biome type based on altitude, temperature, and humidity.
+//   This function uses various thresholds to classify regions into distinct biomes.
+//
+// Parameters:
+//   - float altitude: The altitude value at a point.
+//   - float temperature: The temperature value at a point, normalized between 0 and 1.
+//   - float humidity: The humidity value at a point, normalized between 0 and 1.
+//
+// Return:
+//   - FString: A string character representing the biome type.
+//
+// Functionality:
+//   - Clamps temperature and humidity values to ensure they are within a valid range.
+//   - Uses a series of if-else statements to determine the biome based on the given altitude, 
+//     temperature, and humidity.
+//   - Defines various biome types like ocean, beach, desert, plains, forests, highlands, etc.
+//
+// Usage:
+//   This function is used in the process of creating a biome map for procedural terrain generation,
+//   influencing the color and structure of the terrain.
 FString ADiamondSquare::DetermineBiome(float altitude, float temperature, float humidity) {
     // Normalize temperature and humidity between 0 and 1 if not already.
     temperature = FMath::Clamp(temperature, 0.0f, 1.0f);
@@ -377,6 +434,21 @@ FString ADiamondSquare::DetermineBiome(float altitude, float temperature, float 
 }
 
 
+// ADiamondSquare::PostProcessBiomeMap
+// -----------------------------------
+// Purpose: 
+//   Applies post-processing techniques to the biome map to enhance realism and visual appeal.
+//   This includes adding beach zones near oceans and potentially other modifications like smoothing edges.
+//
+// Functionality:
+//   - Copies the original biome map to reference during changes.
+//   - Iterates through each cell in the biome map, modifying cells based on their surroundings.
+//   - Adds beaches adjacent to ocean cells within a defined width.
+//   - Can be extended to include additional post-processing steps like smoothing biome edges or adding rivers.
+//
+// Usage:
+//   This function is called after the initial biome map generation to refine and improve the map,
+//   making the resultant terrain more realistic and visually appealing.
 void ADiamondSquare::PostProcessBiomeMap() {
     // Copy the original BiomeMap for reference during changes
     TArray<FString> OriginalBiomeMap = BiomeMap;
@@ -419,6 +491,29 @@ void ADiamondSquare::PostProcessBiomeMap() {
 }
 
 
+// ADiamondSquare::GetInterpolatedHeight
+// -------------------------------------
+// Purpose: 
+//   Adjusts the height value of a vertex based on its biome type. This function uses
+//   different adjustment methods for different biomes to create a more realistic and
+//   varied terrain.
+//
+// Parameters:
+//   - float heightValue: The original height value of the vertex.
+//   - TCHAR biomeType: The character representing the biome type.
+//
+// Return:
+//   - float: The adjusted height value after considering the biome type.
+//
+// Functionality:
+//   - Uses a switch statement to apply different height adjustments based on biome type.
+//   - Each biome type has a specific adjustment function that modifies the height to suit
+//     the characteristics of that biome.
+//   - For unrecognized biomes, it returns the original height value.
+//
+// Usage:
+//   This function is called during the vertex creation process to refine the terrain height
+//   based on the biome, contributing to the procedural generation of varied and realistic terrain.
 float ADiamondSquare::GetInterpolatedHeight(float heightValue, TCHAR biomeType)
 {
     switch (biomeType)
@@ -467,6 +562,103 @@ float ADiamondSquare::GetInterpolatedHeight(float heightValue, TCHAR biomeType)
     }
 }
 
+
+// ADiamondSquare::GetColorBasedOnBiomeAndHeight
+// ---------------------------------------------
+// Purpose: 
+//   Determines the color of a vertex based on the biome type and its height (Z value).
+//   This function assigns distinct colors to different biomes and adjusts shades to reflect
+//   variations in height within each biome.
+//
+// Parameters:
+//   - float Z: The height value of the vertex.
+//   - TCHAR biomeType: The character representing the biome type.
+//
+// Return:
+//   - FLinearColor: The color corresponding to the given biome and height.
+//
+// Functionality:
+//   - Uses a switch statement to assign colors based on biome types like ocean, mountain,
+//     forest, desert, etc.
+//   - Adjusts color shades based on the height value to create more realistic terrain features.
+//
+// Usage:
+//   This function is called for each vertex in the procedural mesh generation process to
+//   apply appropriate colors based on the biome and elevation.
+FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeType)
+{
+    // Assign colors based on biome type. Adjust the shades if needed to reflect different heights within the biomes.
+    switch (biomeType)
+    {
+    case 'O': // Ocean
+        if (Z < 0.1f) Color = FLinearColor(0.05f, 0.19f, 0.57f); // Deep Water
+        else Color = FLinearColor(0.28f, 0.46f, 0.80f); // Shallow Water
+        break;
+    case 'I': // Snow, Tundra
+        Color = FLinearColor::White;
+        break;
+    case 'K': // Snowy Forest
+        Color = FLinearColor(0.85f, 0.85f, 0.85f); // Lighter shade for snowy overlay on trees
+        break;
+    case 'M': // Mountain
+        if (Z > 0.8f) Color = FLinearColor::White; // Snow capped peaks
+        else Color = FLinearColor(0.50f, 0.50f, 0.50f); // Mountain Rock
+        break;
+    case 'P': // Plains
+        Color = FLinearColor(0.24f, 0.70f, 0.44f); // Grass Green
+        break;
+    case 'B': //Beach
+        Color = FLinearColor(0.82f, 0.66f, 0.42f);
+        break;
+    case 'D': // Desert
+        Color = FLinearColor(0.82f, 0.66f, 0.42f); // Sand
+        break;
+    case 'R': // River
+        Color = FLinearColor(0.50f, 0.73f, 0.93f); // Freshwater color
+        break;
+        // Add additional cases for new biome types here.
+    case 'T': // Taiga
+        Color = (Z > 0.5f) ? FLinearColor(0.52f, 0.37f, 0.26f) : FLinearColor(0.20f, 0.40f, 0.20f); // Darker Green for dense forestation
+        break;
+    case 'W': // Woodlands
+        Color = FLinearColor(0.30f, 0.60f, 0.30f); // Green with a bit more yellow
+        break;
+    case 'H': // Highlands
+        Color = FLinearColor(0.45f, 0.55f, 0.30f); // Dryer green with hints of brown
+        break;
+    case 'F': // Regular Forest
+        Color = FLinearColor(0.13f, 0.55f, 0.13f); // Same color as before
+        break;
+    case 'S': // Steppe
+        Color = FLinearColor(0.79f, 0.833f, 0.831f); // super light blue
+        break;
+    case 'J': // Jungle
+        Color = FLinearColor(0.25f, 0.50f, 0.20f);
+        break;
+    case 'X': // Swamp
+        Color = FLinearColor(0.36f, 0.34f, 0.22f);
+        break;
+    case 'C': // Con Forest
+        Color = FLinearColor(0.149f, 0.243f, 0.192f);
+        break;
+    case 'U': // Tundra
+        Color = FLinearColor(0.462f, 0.564f, 0.678f); // Cold and sparse vegetation color
+        break;
+    case 'V': // Savanna
+        Color = FLinearColor(0.85f, 0.87f, 0.45f); // Yellowish grass color
+        break;
+    case 'L': // Rainforest
+        Color = FLinearColor(0.00f, 0.39f, 0.00f); // Deep green
+        break;
+
+    default:
+        // If the biome type is unrecognized, use a default color (gray).
+        Color = FLinearColor::Red;
+        break;
+    }
+
+    return Color;
+}
 
 
 float ADiamondSquare::AdjustForOcean(float& heightValue) {
