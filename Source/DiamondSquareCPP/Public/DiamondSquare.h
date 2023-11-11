@@ -52,6 +52,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
         float HumidityScale = 0.1f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+        float BiomeScale = 0.1f;
+
 
 
 

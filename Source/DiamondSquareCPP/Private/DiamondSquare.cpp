@@ -72,8 +72,6 @@ void ADiamondSquare::CreateTriangles()
 }
 
 
-
-
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 {
     Colors.Empty();
@@ -112,8 +110,6 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
         UE_LOG(LogTemp, Error, TEXT("Error: Colors array and Vertices array are not the same size."));
     }
 }
-
-
 
 
 
@@ -161,8 +157,6 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 
     return NoiseMap;
 }
-
-
 
 
 
@@ -242,9 +236,6 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeT
 }
 
 
-
-
-
 TArray<FString> ADiamondSquare::CreateBiomeMap() {
     BiomeMap.Empty();
     // Generate noise maps for temperature and humidity
@@ -253,8 +244,8 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
     for (int y = 0; y < YSize; y++) {
         for (int x = 0; x < XSize; x++) {
             // Calculate noise values for temperature and humidity.
-            float temperatureNoise = FMath::PerlinNoise2D(FVector2D(x * TemperatureScale, y * TemperatureScale));
-            float humidityNoise = FMath::PerlinNoise2D(FVector2D(x * HumidityScale, y * HumidityScale));
+            float temperatureNoise = FMath::PerlinNoise2D(FVector2D(x * TemperatureScale * BiomeScale, y * TemperatureScale * BiomeScale));
+            float humidityNoise = FMath::PerlinNoise2D(FVector2D(x * HumidityScale * BiomeScale, y * HumidityScale * BiomeScale));
 
             // Store temperature and humidity values.
             TemperatureMap.Add(temperatureNoise);
@@ -267,7 +258,7 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
 
         for (int x = 0; x < XSize; x++) {
             // Get altitude using Perlin noise.
-            float altitudeNoise = FMath::PerlinNoise2D(FVector2D(x * AltitudeScale, y * AltitudeScale));
+            float altitudeNoise = FMath::PerlinNoise2D(FVector2D(x * AltitudeScale * BiomeScale, y * AltitudeScale * BiomeScale));
 
             // Get temperature and humidity for the current position.
             float temperature = TemperatureMap[y * XSize + x];
@@ -293,7 +284,6 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
 
     return BiomeMap;
 }
-
 
 
 // Biome determination 
@@ -387,11 +377,6 @@ FString ADiamondSquare::DetermineBiome(float altitude, float temperature, float 
 }
 
 
-
-
-
-
-
 void ADiamondSquare::PostProcessBiomeMap() {
     // Copy the original BiomeMap for reference during changes
     TArray<FString> OriginalBiomeMap = BiomeMap;
@@ -432,8 +417,6 @@ void ADiamondSquare::PostProcessBiomeMap() {
     // Further post-processing can be done here, such as smoothing biome edges or adding rivers
     // ...
 }
-
-
 
 
 float ADiamondSquare::GetInterpolatedHeight(float heightValue, TCHAR biomeType)
