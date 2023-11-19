@@ -17,38 +17,62 @@ public:
     ADiamondSquare();
 
     UPROPERTY(EditAnywhere)
-        bool recreateMesh = true;
+    bool recreateMesh = true;
+
+    UPROPERTY(EditAnywhere)
+    bool boolConvolve = true;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        int XSize = 200;
+    int XSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        int YSize = 200;
+    int YSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        float ZMultiplier = 1000.0f;
+    float ZMultiplier = 1000.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        float Scale = 10.0f;
+    float ZExpo = 1;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        float UVScale = 0.0f;
+    float Scale = 10.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        int Octaves = 1;
+    float UVScale = 0.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        float Lacunarity = 2.0f;
+    int Octaves = 1;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-        float Persistence = 0.5f;
+    float Lacunarity = 2.0f;
+
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+    float Persistence = 0.5f;
+
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+    float AltitudeScale = 0.03f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+    float TemperatureScale = 0.1f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+    float HumidityScale = 0.1f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+    float BiomeScale = 0.1f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
+    int Seed = 0;
+
+
 
 protected:
     virtual void BeginPlay() override;
     virtual void OnConstruction(const FTransform& Transform) override;
 
     UPROPERTY(EditAnywhere)
-        UMaterialInterface* Material;
+    UMaterialInterface* Material;
 
 public:
     virtual void Tick(float DeltaTime) override;
@@ -61,9 +85,58 @@ private:
     TArray<FVector> Normals;
     TArray<struct FProcMeshTangent> Tangents;
 
+    FLinearColor Color;
     TArray<FColor> Colors;
+
+    FLinearColor GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeType);
 
     void CreateVertices(const TArray<TArray<float>>& NoiseMap);
     void CreateTriangles();
+
     TArray<TArray<float>> GeneratePerlinNoiseMap();
+
+    TArray<FString> CreateBiomeMap();
+
+    void PostProcessBiomeMap();
+    FString DetermineBiome(float altitude, float temperature, float humidity);
+
+    float GetInterpolatedHeight(float heightValue, TCHAR biomeType);
+
+    TArray<FString> BiomeMap;
+    TArray<TArray<bool>> EdgesMap;
+
+    TArray<TArray<float>> GetGaussianFilter(int32 fSize, float variance);
+
+    TArray<TArray<float>> Convolve(const TArray<TArray<float>>& map, const TArray<TArray<float>>& filter);
+    TArray<TArray<float>> Convolve2(const TArray<TArray<float>>& map, const TArray<TArray<float>>& filterF, const TArray<TArray<float>>& filterT, const TArray<TArray<bool>>& boolMap);
+    //void Convolve2(TArray<TArray<float>>& Map, const TArray<TArray<float>>& FilterF, const TArray<TArray<float>>& FilterT, const TArray<TArray<bool>>& BoolMap);
+
+
+
+    // Height adjustment functions for biomes
+    float AdjustForOcean(float& heightValue);
+    float AdjustForMountain(float& heightValue);
+    float AdjustForPlains(float& heightValue);
+    float AdjustForSnow(float& heightValue);
+    float AdjustForForest(float& heightValue);
+    float AdjustForTaiga(float& heightValue);
+    float AdjustForWoodlands(float& heightValue);
+    float AdjustForSnowyMountain(float& heightValue);
+    float AdjustForHighlands(float& heightValue);
+    float AdjustForRiver(float& heightValue);  // If needed
+    float AdjustForSnowyForest(float& heightValue); // If needed
+    float AdjustForOldForest(float& heightValue); // If needed
+    float AdjustForBeach(float& heightValue);
+    float AdjustForJungle(float& heightValue);
+    float AdjustForConiferousForest(float& heightValue);
+    float AdjustForSwamp(float& heightValue);
+    float AdjustForDesert(float& heightValue);
+    float AdjustForSavanna(float& heightValue);
+    float AdjustForRainforest(float& heightValue);
+    float AdjustForSteppe(float& heightValue);
+    float AdjustForTundra(float& heightValue);
+
+
+
+
 };
