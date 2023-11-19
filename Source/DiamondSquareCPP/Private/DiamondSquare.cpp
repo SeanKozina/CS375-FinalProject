@@ -69,14 +69,14 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
 
 void ADiamondSquare::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
 }
 
 
 void ADiamondSquare::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 
 }
 
@@ -148,6 +148,8 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
                 Colors.Add(Color.ToFColor(false));
 
                 // Add vertex with calculated position and UV coordinates
+                Z *= ZMultiplier;
+                Z = pow(Z, ZExpo);
                 Vertices.Add(FVector(X * Scale, Y * Scale, Z * ZMultiplier * Scale));
                 UV0.Add(FVector2D(X * UVScale, Y * UVScale));
             }
@@ -246,7 +248,9 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
             NoiseMap[X][Y] = FMath::Clamp(NoiseHeight, 0.0f, 1.0f);
         }
     }
-
+    if (boolConvolve) {
+        NoiseMap = Convolve2(NoiseMap, GetGaussianFilter(5,1.5), GetGaussianFilter(10, 1.5),EdgesMap);
+    }
     // Return the generated Perlin noise map
     return NoiseMap;
 }
@@ -276,8 +280,8 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
     // Generate noise maps for temperature and humidity
     TArray<float> TemperatureMap;
     TArray<float> HumidityMap;
-    for (int y = 0; y < YSize; y++) {
-        for (int x = 0; x < XSize; x++) {
+    for (int x = 0; x < XSize; x++) {
+        for (int y = 0; y < YSize; y++) {
             // Calculate noise values for temperature and humidity.
             float temperatureNoise = FMath::PerlinNoise2D(FVector2D(x * TemperatureScale * BiomeScale, y * TemperatureScale * BiomeScale));
             float humidityNoise = FMath::PerlinNoise2D(FVector2D(x * HumidityScale * BiomeScale, y * HumidityScale * BiomeScale));
@@ -288,10 +292,10 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
         }
     }
 
-    for (int y = 0; y < YSize; y++) {
+    for (int x = 0; x < XSize; x++) {
         FString row;
 
-        for (int x = 0; x < XSize; x++) {
+        for (int y = 0; y < YSize; y++) {
             // Get altitude using Perlin noise.
             float altitudeNoise = FMath::PerlinNoise2D(FVector2D(x * AltitudeScale * BiomeScale, y * AltitudeScale * BiomeScale));
 
@@ -316,7 +320,6 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
     for (const FString& row : BiomeMap) {
         UE_LOG(LogDiamondSquare, Log, TEXT("%s"), *row);
     }
-
     return BiomeMap;
 }
 
@@ -345,27 +348,23 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
 //   This function is used in the process of creating a biome map for procedural terrain generation,
 //   influencing the color and structure of the terrain.
 FString ADiamondSquare::DetermineBiome(float altitude, float temperature, float humidity) {
-    // Normalize temperature and humidity between 0 and 1 if not already.
-    temperature = FMath::Clamp(temperature, 0.0f, 1.0f);
-    humidity = FMath::Clamp(humidity, 0.0f, 1.0f);
-
     // Altitude thresholds for different terrain types.
-    const float SeaLevel = 0.1f;
+    const float SeaLevel = 0.05f;
     const float PlainsLevel = 0.3f;
     const float MountainLevel = 0.7f;
     const float HighlandLevel = 0.5f;
 
     // Temperature thresholds for different climates.
-    const float SnowTemperature = 0.2f;
-    const float DesertTemperature = 0.8f;
-    const float TundraTemperature = 0.3f;
-    const float SavannaTemperature = 0.7f;
-    const float TaigaTemperature = 0.4f;
+    const float SnowTemperature = -0.3f;
+    const float DesertTemperature = 0.7f;
+    const float TundraTemperature = -0.7f;
+    const float SavannaTemperature = 0.5f;
+    const float TaigaTemperature = -0.2f;
 
     // Humidity thresholds for determining dry/wet biomes.
-    const float DryHumidity = 0.3f;
-    const float WetHumidity = 0.7f;
-    const float RainforestHumidity = 0.8f;
+    const float DryHumidity = -0.5f;
+    const float WetHumidity = 0.5f;
+    const float RainforestHumidity = 0.7f;
 
     // Determine biomes based on altitude, temperature, and humidity.
     if (altitude < SeaLevel) {
@@ -390,14 +389,14 @@ FString ADiamondSquare::DetermineBiome(float altitude, float temperature, float 
                 return TEXT("I"); // Ice Plains
             }
         }
-        else if (humidity > WetHumidity) {
-            return TEXT("X"); // Swamp
-        }
         else if (temperature > DesertTemperature && humidity < DryHumidity) {
             return TEXT("D"); // Desert
         }
-        else if (humidity > DryHumidity && humidity < WetHumidity) {
+        else if (humidity > DryHumidity && humidity < WetHumidity && temperature > SavannaTemperature) {
             return TEXT("S"); // Steppe
+        }
+        else if (humidity > WetHumidity) {
+            return TEXT("X"); // Swamp
         }
         else {
             return TEXT("P"); // Plains
@@ -453,31 +452,47 @@ void ADiamondSquare::PostProcessBiomeMap() {
     // Copy the original BiomeMap for reference during changes
     TArray<FString> OriginalBiomeMap = BiomeMap;
 
-    // Define how wide the beach zone should be
-    const int BeachWidth = 3;
+    EdgesMap.Init(TArray<bool>(), XSize);
+    const int BorderWidth = 3;
+    bool isSnowBiome = false;
 
-    // Loop through each cell in the BiomeMap
-    for (int y = 0; y < YSize; y++) {
-        for (int x = 0; x < XSize; x++) {
-            // Check if the current cell is ocean
-            if (OriginalBiomeMap[y][x] == TEXT('O')) {
-                // Check the surrounding area for land and add beaches if necessary
-                for (int dy = -BeachWidth; dy <= BeachWidth; dy++) {
-                    for (int dx = -BeachWidth; dx <= BeachWidth; dx++) {
-                        int adjX = x + dx;
+    for (int x = 0; x < XSize; x++) {
+        EdgesMap[x].Init(false, YSize);
+        for (int y = 0; y < YSize; y++) {
+            TCHAR currentBiome = OriginalBiomeMap[x][y];
+
+            // Check neighboring cells for edges
+            for (int offsetX = -1; offsetX <= 1; offsetX++) {
+                for (int offsetY = -1; offsetY <= 1; offsetY++) {
+                    if (offsetX == 0 && offsetY == 0) continue;
+                    int neighborY = y + offsetY;
+                    int neighborX = x + offsetX;
+                    if (neighborY >= 0 && neighborY < YSize && neighborX >= 0 && neighborX < XSize) {
+                        TCHAR neighborBiome = OriginalBiomeMap[neighborX][neighborY];
+                        if (neighborBiome != currentBiome) {
+                            EdgesMap[x][y] = true;
+                        }
+                    }
+                }
+            }
+            // Check for ocean cells to add beaches or ice
+            if (OriginalBiomeMap[x][y] == TEXT('O')) {
+                for (int dx = -BorderWidth; dx <= BorderWidth; dx++) {
+                    for (int dy = -BorderWidth; dy <= BorderWidth; dy++) {
                         int adjY = y + dy;
-                        // Skip the current cell and check bounds
-                        if ((dx == 0 && dy == 0) || adjX < 0 || adjX >= XSize || adjY < 0 || adjY >= YSize) {
-                            continue;
+                        int adjX = x + dx;
+                        if ((dy == 0 && dx == 0) || adjY < 0 || adjY >= YSize || adjX < 0 || adjX >= XSize) continue;
+
+                        // Determine if the adjacent cell is a snow biome
+                        TCHAR adjBiome = OriginalBiomeMap[adjX][adjY];
+                        if (adjBiome == TEXT('K') || adjBiome == TEXT('I') || adjBiome == TEXT('T') || adjBiome == TEXT('U')) {
+                            isSnowBiome = true;
                         }
 
-                        // If adjacent cell is land, check if it needs to be converted to beach
-                        if (OriginalBiomeMap[adjY][adjX] != TEXT('O') && OriginalBiomeMap[adjY][adjX] != TEXT('B')) {
-                            // Calculate distance from the ocean to this cell
+                        if (adjBiome != TEXT('O') && adjBiome != TEXT('B')) {
                             int distanceFromOcean = FMath::Max(FMath::Abs(dx), FMath::Abs(dy));
-                            // If the cell is within beach width range, convert it to beach
-                            if (distanceFromOcean <= BeachWidth) {
-                                BiomeMap[adjY][adjX] = TEXT('B'); // Beach
+                            if (distanceFromOcean <= BorderWidth) {
+                                BiomeMap[adjX][adjY] = isSnowBiome ? TEXT('I') : TEXT('B');
                             }
                         }
                     }
@@ -485,10 +500,19 @@ void ADiamondSquare::PostProcessBiomeMap() {
             }
         }
     }
-
+    for (int32 i = 0; i < EdgesMap.Num(); i++)
+    {
+        FString ArrayRowString;
+        for (int32 j = 0; j < EdgesMap[i].Num(); j++)
+        {
+            ArrayRowString += EdgesMap[i][j] ? TEXT("T") : TEXT("F");
+        }
+        UE_LOG(LogDiamondSquare, Log, TEXT("Row %d: %s"), i, *ArrayRowString);
+    }
     // Further post-processing can be done here, such as smoothing biome edges or adding rivers
     // ...
 }
+
 
 
 // ADiamondSquare::GetInterpolatedHeight
@@ -630,7 +654,7 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeT
         Color = FLinearColor(0.13f, 0.55f, 0.13f); // Same color as before
         break;
     case 'S': // Steppe
-        Color = FLinearColor(0.79f, 0.833f, 0.831f); // super light blue
+        Color = FLinearColor(0.678f, 0.537f, 0.403f);
         break;
     case 'J': // Jungle
         Color = FLinearColor(0.25f, 0.50f, 0.20f);
@@ -757,8 +781,158 @@ float ADiamondSquare::AdjustForTundra(float& heightValue) {
     return heightValue = FMath::Lerp(0.1f, 0.3f, heightValue); // Keep tundra flat with slight undulations
 }
 
+TArray<TArray<float>> ADiamondSquare::GetGaussianFilter(int32 fSize, float variance) {
+    // Clamp variance to be greater than 0
+    variance = std::max(variance, 0.0001f);
+
+    TArray<TArray<float>> res;
+    int32 halfSize = fSize / 2;
+    float sum = 0;
+    // Add each
+    for (int32 i = -halfSize; i <= halfSize; ++i) {
+        TArray<float> row;
+        for (int32 j = -halfSize; j <= halfSize; ++j) {
+            float val = exp(-1 * (i * i + j * j) / (2 * variance));
+            sum += val;
+            row.Add(val);
+        }
+        res.Add(row);
+    }
+
+    // Normalize the filter
+    for (int32 i = 0; i < fSize; ++i) {
+        for (int32 j = 0; j < fSize; ++j) {
+            res[i][j] /= sum;
+        }
+    }
+
+    return res;
+}
+
+TArray<TArray<float>> ADiamondSquare::Convolve(const TArray<TArray<float>>& map, const TArray<TArray<float>>& filter) {
+    // Get Bounds
+    int32 fSize = filter.Num();
+    int32 halfFSize = fSize / 2;
+    int32 rowStart = fSize / 2;
+    int32 rowStop = map.Num() - rowStart;
+    int32 colStart = rowStart;
+    int32 colStop = map[0].Num() - colStart;
+
+    // Make a copy of the map
+    TArray<TArray<float>> res = map;
+
+    // Convolve the map with the filter
+    for (int32 row = rowStart; row < rowStop; ++row) {
+        for (int32 col = colStart; col < colStop; ++col) {
+            // Process a cell with the filter
+            float sum = 0.0;
+            for (int32 rowOff = -halfFSize; rowOff <= halfFSize; rowOff++) {
+                for (int32 colOff = -halfFSize; colOff <= halfFSize; colOff++) {
+                    int32 map_row = rowOff + row;
+                    int32 map_col = colOff + col;
+                    int32 f_row = rowOff + halfFSize;
+                    int32 f_col = colOff + halfFSize;
+
+                    sum += map[map_row][map_col] * filter[f_row][f_col];
+                }
+            }
+            // Save convolution result on cell in temp array
+            res[row][col] = sum;
+        }
+    }
+
+    return res;
+}
 
 
+TArray<TArray<float>> ADiamondSquare::Convolve2(const TArray<TArray<float>>& map, const TArray<TArray<float>>& filterF, const TArray<TArray<float>>& filterT, const TArray<TArray<bool>>& boolMap) {
+    // Get Bounds
+    int32 fSize = filterF.Num();
+    int32 halfFSize = fSize / 2;
+    int32 rowStart = fSize / 2;
+    int32 rowStop = map.Num() - rowStart;
+    int32 colStart = rowStart;
+    int32 colStop = map[0].Num() - colStart;
+
+    // Make a copy of the map
+    TArray<TArray<float>> res = map;
+
+    // Convolve the map with the filters
+    for (int32 row = rowStart; row < rowStop; ++row) {
+        for (int32 col = colStart; col < colStop; ++col) {
+            // Determine which filter to use based on the BoolMap
+            const TArray<TArray<float>>& filter = boolMap[row][col] ? filterT : filterF;
+
+            // Process a cell with the filter
+            float sum = 0.0;
+            for (int32 rowOff = -halfFSize; rowOff <= halfFSize; rowOff++) {
+                for (int32 colOff = -halfFSize; colOff <= halfFSize; colOff++) {
+                    int32 map_row = rowOff + row;
+                    int32 map_col = colOff + col;
+                    int32 f_row = rowOff + halfFSize;
+                    int32 f_col = colOff + halfFSize;
+                    // Check bounds before accessing arrays
+                    if (map_row >= 0 && map_row < map.Num() && map_col >= 0 && map_col < map[0].Num() &&
+                        f_row >= 0 && f_row < fSize && f_col >= 0 && f_col < fSize) {
+                        sum += map[map_row][map_col] * filter[f_row][f_col];
+                    }
+                }
+            }
+            // Save convolution result on cell in temp array
+            res[row][col] = sum;
+        }
+    }
+
+    return res;
+}
+
+/*
+void ADiamondSquare::Convolve2(TArray<TArray<float>>& Map, const TArray<TArray<float>>& FilterF, const TArray<TArray<float>>& FilterT, const TArray<TArray<bool>>& BoolMap)
+{
+    // Get Bounds
+    int32 HalfFSize = FilterF.Num() / 2;
+
+    // Make a copy of the map
+    TArray<TArray<float>> Res = Map;
+
+    // Convolve the map with the filter
+    for (int32 Row = 0; Row < Map.Num(); ++Row) {
+        for (int32 Col = 0; Col < Map[0].Num(); ++Col) {
+            // Process a cell with the filter
+            float Sum = 0.0f;
+            const TArray<TArray<float>>& Filter = (BoolMap[Row][Col] ? FilterT : FilterF);
+            for (int32 RowOff = -HalfFSize; RowOff <= HalfFSize; RowOff++) {
+                for (int32 ColOff = -HalfFSize; ColOff <= HalfFSize; ColOff++) {
+                    // Get coords of cell to look at
+                    int32 MapRow = RowOff + Row;
+                    int32 MapCol = ColOff + Col;
+
+                    // Handle edge cases
+                    if (MapRow < 0) MapRow = 0;
+                    else if (MapRow >= Map.Num()) MapRow = Map.Num() - 1;
+                    if (MapCol < 0) MapCol = 0;
+                    else if (MapCol >= Map[0].Num()) MapCol = Map[0].Num() - 1;
+
+                    // Filter coords
+                    int32 FRow = RowOff + HalfFSize;
+                    int32 FCol = ColOff + HalfFSize;
+
+                    float MapValue = Map[MapRow][MapCol];
+                    float FilterValue = Filter[FRow][FCol];
+
+                    Sum += FilterValue * MapValue;
+                }
+            }
+            // Save convolution result on cell in temp array
+            Res[Row][Col] = Sum;
+        }
+    }
+    Map = Res;
+}
+
+
+
+*/
 /*void ADiamondSquare::PostProcessBiomeMap() {
     // Copy the original BiomeMap for reference during changes
     TArray<FString> OriginalBiomeMap = BiomeMap;
@@ -1067,7 +1241,7 @@ TArray<FString> ADiamondSquare::CreateBiomeMap() {
         NoiseMap[X].Init(0.0f, YSize);
         for (int Y = 0; Y < YSize; ++Y)
         {
-            
+
             Amplitude = 1.0f;
             Frequency = 1.0f;
             NoiseHeight = 0.0f;
