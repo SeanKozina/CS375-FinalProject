@@ -14,6 +14,32 @@ class DIAMONDSQUARECPP_API ADiamondSquare : public AActor
     GENERATED_BODY()
 
 public:
+    enum class ECell
+    {
+        Land,
+        Ocean,
+        Warm,
+        Cold,
+        Freezing,
+        Temperate,
+        // Biome types
+        Desert,
+        Plains,
+        Rainforest,
+        Savannah,
+        Swamp,
+        Woodland,
+        Forest,
+        Highland,
+        Taiga,
+        SnowyForest,
+        Tundra,
+        IcePlains,
+        Mountain,
+        Beach,
+        River
+    };
+
     ADiamondSquare();
 
     UPROPERTY(EditAnywhere)
@@ -85,31 +111,42 @@ private:
     TArray<FVector> Normals;
     TArray<struct FProcMeshTangent> Tangents;
 
-    FLinearColor Color;
     TArray<FColor> Colors;
-
-    FLinearColor GetColorBasedOnBiomeAndHeight(float Z, TCHAR biomeType);
 
     void CreateVertices(const TArray<TArray<float>>& NoiseMap);
     void CreateTriangles();
 
     TArray<TArray<float>> GeneratePerlinNoiseMap();
 
-    TArray<FString> CreateBiomeMap();
+    TArray<TArray<ADiamondSquare::ECell>> BiomeMap;
 
-    void PostProcessBiomeMap();
-    FString DetermineBiome(float altitude, float temperature, float humidity);
+    FLinearColor GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeType);
+    float GetInterpolatedHeight(float heightValue, ECell BiomeType);
 
-    float GetInterpolatedHeight(float heightValue, TCHAR biomeType);
 
-    TArray<FString> BiomeMap;
-    TArray<TArray<bool>> EdgesMap;
+    //Schostaic Automata Stack to Create Biome Map
+    TArray<TArray<ECell>> Island(TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> FuzzyZoom(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> AddIsland(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> Zoom(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> RemoveTooMuchOcean(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> AddTemps(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> WarmToTemperate(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> FreezingToCold(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> TemperatureToBiome(const TArray<TArray<ECell>>& Board);
 
-    TArray<TArray<float>> GetGaussianFilter(int32 fSize, float variance);
 
-    TArray<TArray<float>> Convolve(const TArray<TArray<float>>& map, const TArray<TArray<float>>& filter);
-    TArray<TArray<float>> Convolve2(const TArray<TArray<float>>& map, const TArray<TArray<float>>& filterF, const TArray<TArray<float>>& filterT, const TArray<TArray<bool>>& boolMap);
-    //void Convolve2(TArray<TArray<float>>& Map, const TArray<TArray<float>>& FilterF, const TArray<TArray<float>>& FilterT, const TArray<TArray<bool>>& BoolMap);
+
+
+    //helper functions
+    ECell SelectBiome(const TArray<ECell>& Biomes, const TArray<float>& Odds, FRandomStream& Rng);
+    void SetBoardRegion(TArray<TArray<ECell>>& Board, int32 CenterX, int32 CenterY, int32 Radius, ECell NewState);
+    bool IsAdjacentToGroup(const TArray<TArray<ECell>>& Board, int32 X, int32 Y, const TSet<ECell>& GroupA, const TSet<ECell>& GroupB);
+    bool IsSurroundedByOcean(const TArray<TArray<ECell>>& Board, int32 i, int32 j);
+    bool IsEdgeCell(const TArray<TArray<ECell>>& Board, int32 i, int32 j);
+    void PrintBoard(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> TestIsland();
+
 
 
 
@@ -135,7 +172,6 @@ private:
     float AdjustForRainforest(float& heightValue);
     float AdjustForSteppe(float& heightValue);
     float AdjustForTundra(float& heightValue);
-
 
 
 
