@@ -23,6 +23,7 @@ public:
         Freezing,
         Temperate,
         // Biome types
+        DeepOcean,
         Desert,
         Plains,
         Rainforest,
@@ -37,16 +38,15 @@ public:
         IcePlains,
         Mountain,
         Beach,
-        River
+        River,
+        SwampShore,
+        Ice
     };
 
     ADiamondSquare();
 
     UPROPERTY(EditAnywhere)
     bool recreateMesh = true;
-
-    UPROPERTY(EditAnywhere)
-    bool boolConvolve = true;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
     int XSize = 200;
@@ -75,23 +75,8 @@ public:
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
     float Persistence = 0.5f;
 
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
-    float AltitudeScale = 0.03f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
-    float TemperatureScale = 0.1f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
-    float HumidityScale = 0.1f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
-    float BiomeScale = 0.1f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
-    int Seed = 0;
-
-
+    int32 Seed = 0;
 
 protected:
     virtual void BeginPlay() override;
@@ -134,6 +119,8 @@ private:
     TArray<TArray<ECell>> WarmToTemperate(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> FreezingToCold(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> TemperatureToBiome(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> DeepOcean(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> Shore(const TArray<TArray<ECell>>& Board);
 
 
 
@@ -146,33 +133,6 @@ private:
     bool IsEdgeCell(const TArray<TArray<ECell>>& Board, int32 i, int32 j);
     void PrintBoard(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> TestIsland();
-
-
-
-
-    // Height adjustment functions for biomes
-    float AdjustForOcean(float& heightValue);
-    float AdjustForMountain(float& heightValue);
-    float AdjustForPlains(float& heightValue);
-    float AdjustForSnow(float& heightValue);
-    float AdjustForForest(float& heightValue);
-    float AdjustForTaiga(float& heightValue);
-    float AdjustForWoodlands(float& heightValue);
-    float AdjustForSnowyMountain(float& heightValue);
-    float AdjustForHighlands(float& heightValue);
-    float AdjustForRiver(float& heightValue);  // If needed
-    float AdjustForSnowyForest(float& heightValue); // If needed
-    float AdjustForOldForest(float& heightValue); // If needed
-    float AdjustForBeach(float& heightValue);
-    float AdjustForJungle(float& heightValue);
-    float AdjustForConiferousForest(float& heightValue);
-    float AdjustForSwamp(float& heightValue);
-    float AdjustForDesert(float& heightValue);
-    float AdjustForSavanna(float& heightValue);
-    float AdjustForRainforest(float& heightValue);
-    float AdjustForSteppe(float& heightValue);
-    float AdjustForTundra(float& heightValue);
-
-
-
+    bool CanTransform(ECell CellType) const;
+    void SeedRandomNumberGenerator();
 };

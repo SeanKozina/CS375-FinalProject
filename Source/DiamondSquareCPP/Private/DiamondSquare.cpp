@@ -42,9 +42,6 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
 
     // Check if the mesh needs to be recreated
     if (recreateMesh) {
-        // Generate a Perlin noise map for terrain-like structure
-        //TestIsland();
-
         auto NoiseMap = GeneratePerlinNoiseMap();
 
         // Reset mesh data to prepare for new mesh creation
@@ -65,7 +62,6 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
 
         // Reset the flag to avoid unnecessary mesh recreation
         recreateMesh = false;
-
     }
 }
 
@@ -104,7 +100,6 @@ void ADiamondSquare::CreateTriangles()
         }
     }
 }
-
 
 
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
@@ -151,7 +146,6 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
         UE_LOG(LogTemp, Error, TEXT("Error: Colors array and Vertices array are not the same size."));
     }
 }
-
 
 
 TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
@@ -210,29 +204,31 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
     switch (BiomeType)
     {
     case ECell::Ocean: // Ocean
-        return AdjustForOcean(HeightValue);
+        return FMath::Clamp(HeightValue, 0.0f, 0.0f);
+    case ECell::DeepOcean: // Ocean
+        return FMath::Clamp(HeightValue, 0.0f, 0.0f);
     case ECell::SnowyForest: // Snowy Forest
-        return AdjustForSnowyForest(HeightValue);
+        return HeightValue;
     case ECell::Mountain: // Mountain
-        return AdjustForMountain(HeightValue);
+        return HeightValue;
     case ECell::Plains: // Plains
-        return AdjustForPlains(HeightValue);
+        return HeightValue;
     case ECell::Beach: // Beach
-        return AdjustForBeach(HeightValue);
+        return HeightValue;
     case ECell::Desert: // Desert
-        return AdjustForDesert(HeightValue);
+        return HeightValue;
     case ECell::River: // River
-        return AdjustForRiver(HeightValue);
+        return HeightValue;
     case ECell::Taiga: // Taiga
-        return AdjustForTaiga(HeightValue);
+        return HeightValue;
     case ECell::Forest: // Regular Forest
-        return AdjustForForest(HeightValue);
+        return HeightValue;
     case ECell::Swamp: // Swamp
-        return AdjustForSwamp(HeightValue);
+        return HeightValue;
     case ECell::Tundra: // Additional Tundra case, if distinct from 'Snow'
-        return AdjustForTundra(HeightValue);
+        return HeightValue;
     case ECell::Rainforest: // Rainforest
-        return AdjustForRainforest(HeightValue);
+        return HeightValue;
     default:
         // For unrecognized biomes, return the original height
         return HeightValue;
@@ -248,8 +244,10 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
     switch (BiomeType)
     {
     case ECell::Ocean:
-        if (Z < 0.1f) Color = FLinearColor(0.05f, 0.19f, 0.57f); // Deep Water
-        else Color = FLinearColor(0.28f, 0.46f, 0.80f); // Shallow Water
+        Color = FLinearColor(0.28f, 0.46f, 0.80f); // Shallow Water
+        break;
+    case ECell::DeepOcean:
+        Color = FLinearColor(0.05f, 0.19f, 0.57f); // Deep Water
         break;
     case ECell::Tundra:
         Color = FLinearColor::White;
@@ -297,8 +295,14 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
     case ECell::IcePlains:
         Color = FLinearColor(0.90f, 0.90f, 0.98f); // Very Light Blue, almost white
         break;
+    case ECell::SwampShore:
+        Color = FLinearColor(76, 152, 123);
+        break;
     case ECell::Land:
-        Color = FLinearColor::Black; // Sandy Beach
+        Color = FLinearColor::Black;
+        break;
+    case ECell::Ice:
+        Color = FLinearColor(191, 199, 214);
         break;
         // Add more biome cases as necessary.
 
@@ -312,9 +316,6 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
 }
 
 
-
-
-
 // Example usage within the ADiamondSquare class
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
 {
@@ -322,28 +323,108 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Island(Board); // Adjust Island function to return the board
     Board = FuzzyZoom(Board);
     Board = AddIsland(Board);
+    PrintBoard(Board);
     Board = Zoom(Board);
     Board = AddIsland(Board);
     Board = AddIsland(Board);
     Board = AddIsland(Board);
+    PrintBoard(Board);
     Board = RemoveTooMuchOcean(Board);
+    PrintBoard(Board);
     Board = AddTemps(Board);
-    PrintBoard(Board);
-    //Board = AddIsland(Board);
+    Board = AddIsland(Board);
     Board = WarmToTemperate(Board);
-    PrintBoard(Board);
     Board = FreezingToCold(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = AddIsland(Board);
+    //Board = DeepOcean(Board);
     Board = TemperatureToBiome(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = AddIsland(Board);
     Board = Zoom(Board);
+    //Board = Shore(Board);
     //PrintBoard(Board); // Print the resulting board
     return Board;
+}
+
+
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>& Board) {
+    TArray<TArray<ECell>> ModifiedBoard = Board; // Make a copy of the board to modify and return.
+
+    int ShoreDepth = 0;
+    int SwampShoreDepth = 0;
+
+    // Define ignore cells set using TSet for Unreal Engine.
+    TSet<ECell> IgnoreSet = { ECell::Tundra, ECell::IcePlains, ECell::Taiga, ECell::SnowyForest,ECell::DeepOcean };
+
+    for (int32 Row = 0; Row < Board.Num(); ++Row) {
+        for (int32 Col = 0; Col < Board[Row].Num(); ++Col) {
+            if (IsEdgeCell(Board, Row, Col)) {
+                ECell CurrentCell = Board[Row][Col];
+                // Check if the current cell should be ignored.
+                if (!IgnoreSet.Contains(CurrentCell)) {
+                    // Apply logic for non-ocean cells adjacent to ocean.
+                    if (CurrentCell != ECell::Ocean) {
+                        // Check if the current cell is Swamp for special treatment.
+                        if (CurrentCell == ECell::Swamp) {
+                            SetBoardRegion(ModifiedBoard, Row, Col, SwampShoreDepth, ECell::SwampShore);
+                        }
+                        else {
+                            SetBoardRegion(ModifiedBoard, Row, Col, ShoreDepth, ECell::Beach);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return ModifiedBoard;
+}
+
+
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::DeepOcean(const TArray<TArray<ADiamondSquare::ECell>>& Board) {
+    // Make a copy of the board to modify and return.
+    TArray<TArray<ECell>> ModifiedBoard = Board;
+
+    // Helper lambda to check if a cell is within bounds and is an Ocean.
+    auto IsOcean = [&](int32 Row, int32 Col) -> bool {
+        return Row >= 0 && Row < Board.Num() && Col >= 0 && Col < Board[Row].Num() && Board[Row][Col] == ECell::Ocean;
+        };
+
+    // Iterate over each cell in the board, this time considering the extended radius for checking.
+    for (int32 Row = 0; Row < Board.Num(); ++Row) {
+        for (int32 Col = 0; Col < Board[Row].Num(); ++Col) {
+            // Check if the current cell is Ocean.
+            if (Board[Row][Col] == ECell::Ocean) {
+                bool bIsSurroundedByOcean = true;
+
+                // Check cells within a radius of 2 around the current cell.
+                for (int32 dRow = -1; dRow <= 1 && bIsSurroundedByOcean; ++dRow) {
+                    for (int32 dCol = -1; dCol <= 1; ++dCol) {
+                        // Skip the check for the current cell itself.
+                        if (dRow == 0 && dCol == 0) continue;
+
+                        // If any cell within the radius is not ocean, mark as not surrounded.
+                        if (!IsOcean(Row + dRow, Col + dCol)) {
+                            bIsSurroundedByOcean = false;
+                            break; // Break inner loop
+                        }
+                    }
+                }
+
+                // If the cell is surrounded by ocean within a radius of 2, change it to DeepOcean.
+                if (bIsSurroundedByOcean) {
+                    ModifiedBoard[Row][Col] = ECell::DeepOcean;
+                }
+            }
+        }
+    }
+
+    // Return the modified board.
+    return ModifiedBoard;
 }
 
 
@@ -385,41 +466,48 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddTemps(const TArray<TArr
 }
 
 
-TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Zoom(const TArray<TArray<ADiamondSquare::ECell>>& Board)
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Zoom(const TArray<TArray<ECell>>& Board)
 {
-    // Predefined indexes array simulating a non-uniform distribution
-    TArray<int32> Indexes = { -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1 };
-    const int32 Rows = Board.Num();
-    const int32 Cols = Board[0].Num();
+    int32 Rows = Board.Num();
+    int32 Cols = Board[0].Num();
     TArray<TArray<ECell>> ScaledBoard;
 
     // Scale the board by a factor of 2
-    ScaledBoard.SetNum(Rows * 2);
-    for (int32 i = 0; i < Rows * 2; ++i)
+    ScaledBoard.Reserve(Rows * 2);
+    for (int32 i = 0; i < Rows; ++i)
     {
-        ScaledBoard[i].SetNum(Cols * 2);
-        for (int32 j = 0; j < Cols * 2; ++j)
+        TArray<ECell> NewRow;
+        NewRow.Reserve(Cols * 2);
+        for (int32 j = 0; j < Cols; ++j)
         {
-            ScaledBoard[i][j] = Board[i / 2][j / 2];
+            NewRow.Add(Board[i][j]);
+            NewRow.Add(Board[i][j]);
         }
+        ScaledBoard.Add(NewRow);
+        ScaledBoard.Add(NewRow);
     }
 
-    FRandomStream Rng;
-    Rng.GenerateNewSeed();
+    int32 ScaledRows = ScaledBoard.Num();
+    int32 ScaledCols = ScaledBoard[0].Num();
+    TArray<int32> Indexes = { -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1 };
 
-    for (int32 i = 0; i < Rows * 2; ++i)
+    for (int32 i = 0; i < ScaledRows; ++i)
     {
-        for (int32 j = 0; j < Cols * 2; ++j)
+        for (int32 j = 0; j < ScaledCols; ++j)
         {
-            if (IsEdgeCell(ScaledBoard, i, j)) // Assuming IsEdgeCell is defined elsewhere
+            if (IsEdgeCell(ScaledBoard, i, j))
             {
-                // Choose xoff and yoff from the predefined indexes
-                int32 xoff = Indexes[Rng.RandRange(0, Indexes.Num() - 1)];
-                int32 yoff = Indexes[Rng.RandRange(0, Indexes.Num() - 1)];
+                // Introduce more randomness in how we choose to modify the cell
+                int32 RandIndex = FMath::RandRange(0, Indexes.Num() - 1);
+                int32 xoff = Indexes[RandIndex];
+                RandIndex = FMath::RandRange(0, Indexes.Num() - 1);
+                int32 yoff = Indexes[RandIndex];
 
-                // Update the cell value, ensuring we stay within bounds
-                int32 new_i = FMath::Clamp(i + xoff, 0, Rows * 2 - 1);
-                int32 new_j = FMath::Clamp(j + yoff, 0, Cols * 2 - 1);
+                int32 new_i = FMath::Clamp(i + xoff, 0, ScaledRows - 1);
+                int32 new_j = FMath::Clamp(j + yoff, 0, ScaledCols - 1);
+
+                // Here you might choose to set the cell to a new value, mix values, or apply other logic
+                // For simplicity, we're just copying from the new location, but consider more complex logic
                 ScaledBoard[i][j] = ScaledBoard[new_i][new_j];
             }
         }
@@ -463,7 +551,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
 
     for (int32 i = 0; i < Rows; ++i) {
         for (int32 j = 0; j < Cols; ++j) {
-            if (IsEdgeCell(i, j)) {
+            if (IsEdgeCell(i, j) && CanTransform(Board[i][j])) {
                 ECell NewState = Rng.FRand() < PLand ? ECell::Land : ECell::Ocean;
                 NextBoard[i][j] = NewState;
             }
@@ -471,6 +559,16 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
     }
 
     return NextBoard;
+}
+// CanTransform checks if a cell of a given type is eligible for transformation.
+// It returns true if the cell can be transformed, and false otherwise.
+bool ADiamondSquare::CanTransform(ECell CellType) const {
+    // Define which cell types should not be transformed.
+    // Assuming TempCold, TempWarm, etc., represent temperature states that should be preserved.
+    TArray<ECell> NonTransformableTypes = { ECell::Temperate, ECell::Warm, ECell::Cold, ECell::Freezing, ECell::Temperate, };
+
+    // Check if the cell type is in the list of types that should not be transformed.
+    return !NonTransformableTypes.Contains(CellType);
 }
 
 
@@ -517,12 +615,42 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::FuzzyZoom(const TArray<TAr
 }
 
 
-bool ADiamondSquare::IsEdgeCell(const TArray<TArray<ADiamondSquare::ECell>>& Board, int32 i, int32 j)
+bool ADiamondSquare::IsEdgeCell(const TArray<TArray<ECell>>& Board, int32 R, int32 C)
 {
-    // Example implementation, assuming edge cells are those on the boundary of the board
-    int32 Rows = Board.Num();
-    int32 Cols = Board[0].Num();
-    return i == 0 || j == 0 || i == Rows - 1 || j == Cols - 1;
+    // Assuming Board is a valid 2D array with dimensions already checked elsewhere
+    if (Board.Num() == 0 || Board[0].Num() == 0)
+    {
+        return false; // Early exit if the board is empty or not properly initialized
+    }
+
+    int32 Dims = Board.Num(); // Assuming square board for simplicity
+    ECell Key = Board[R][C];
+
+    // Directions to check: Up, Down, Left, Right
+    TArray<FIntPoint> Directions = {
+        FIntPoint(-1, 0), // Up
+        FIntPoint(1, 0),  // Down
+        FIntPoint(0, -1), // Left
+        FIntPoint(0, 1)   // Right
+    };
+
+    for (FIntPoint Dir : Directions)
+    {
+        int32 NR = R + Dir.X;
+        int32 NC = C + Dir.Y;
+
+        // Check if the new row and column are within the board bounds
+        if (NR >= 0 && NR < Dims && NC >= 0 && NC < Dims)
+        {
+            // Check if the adjacent cell is different from the current cell
+            if (Board[NR][NC] != Key)
+            {
+                return true; // This is an edge cell
+            }
+        }
+    }
+
+    return false; // Not an edge cell
 }
 
 
@@ -668,9 +796,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::RemoveTooMuchOcean(const T
 }
 
 
-// Define the IsSurroundedByOcean helper function
-
-
 bool ADiamondSquare::IsSurroundedByOcean(const TArray<TArray<ADiamondSquare::ECell>>& Board, int32 i, int32 j)
 {
     const int32 Rows = Board.Num();
@@ -702,7 +827,6 @@ bool ADiamondSquare::IsAdjacentToGroup(const TArray<TArray<ECell>>& Board, int32
 
     return false;
 }
-
 
 
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::WarmToTemperate(const TArray<TArray<ECell>>& Board)
@@ -862,5 +986,18 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TemperatureToBiome(const T
     }
 
     return NewBoard;
+}
+
+
+void ADiamondSquare::SeedRandomNumberGenerator()
+{
+    // Use the current time as a seed value
+    Seed = FDateTime::Now().GetTicks();
+
+    // Initialize the random number generator with the seed
+    FMath::RandInit(Seed);
+
+    // Optionally, log the seed value for debugging purposes
+    UE_LOG(LogTemp, Warning, TEXT("Random Number Generator Seeded with: %d"), Seed);
 }
 
