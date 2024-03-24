@@ -113,6 +113,7 @@ private:
     TArray<TArray<ECell>> Island(TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> FuzzyZoom(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> AddIsland(const TArray<TArray<ECell>>& Board);
+    TArray<TArray<ECell>> AddIsland2(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> Zoom(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> RemoveTooMuchOcean(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> AddTemps(const TArray<TArray<ECell>>& Board);
@@ -133,6 +134,6 @@ private:
     bool IsEdgeCell(const TArray<TArray<ECell>>& Board, int32 i, int32 j);
     void PrintBoard(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> TestIsland();
-    bool CanTransform(ECell CellType) const;
+    bool CanTransform(ECell CellType) const; 
     void SeedRandomNumberGenerator();
 };

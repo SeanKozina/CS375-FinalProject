@@ -205,35 +205,49 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
     {
     case ECell::Ocean: // Ocean
         return FMath::Clamp(HeightValue, 0.0f, 0.0f);
-    case ECell::DeepOcean: // Ocean
-        return FMath::Clamp(HeightValue, 0.0f, 0.0f);
-    case ECell::SnowyForest: // Snowy Forest
-        return HeightValue;
+    case ECell::DeepOcean: // DeepOcean
+        return FMath::Lerp(0.0f, 0.0f, HeightValue);
+    case ECell::SnowyForest: // SnowyForest
+        return FMath::Lerp(0.2f, 0.7f, HeightValue);
     case ECell::Mountain: // Mountain
-        return HeightValue;
+        return FMath::Lerp(0.7f, 1.0f, HeightValue);
     case ECell::Plains: // Plains
-        return HeightValue;
+        return FMath::Lerp(0.1f, 0.3f, HeightValue);
     case ECell::Beach: // Beach
-        return HeightValue;
+        return FMath::Lerp(0.05f, 0.2f, HeightValue);
     case ECell::Desert: // Desert
-        return HeightValue;
+        return FMath::Lerp(0.2f, 0.6f, HeightValue);
     case ECell::River: // River
-        return HeightValue;
+        return FMath::Lerp(0.1f, 0.4f, HeightValue);
     case ECell::Taiga: // Taiga
-        return HeightValue;
-    case ECell::Forest: // Regular Forest
-        return HeightValue;
+        return FMath::Lerp(0.25f, 0.65f, HeightValue);
+    case ECell::Forest: // Forest
+        return FMath::Lerp(0.35f, 0.55f, HeightValue);
     case ECell::Swamp: // Swamp
-        return HeightValue;
-    case ECell::Tundra: // Additional Tundra case, if distinct from 'Snow'
-        return HeightValue;
+        return FMath::Lerp(0.05f, 0.2f, HeightValue);
+    case ECell::Tundra: // Tundra
+        return FMath::Lerp(0.25f, 0.65f, HeightValue);
     case ECell::Rainforest: // Rainforest
-        return HeightValue;
+        return FMath::Lerp(0.2f, 0.45f, HeightValue);
+    case ECell::Woodland: // Woodland
+        return FMath::Lerp(0.3f, 0.5f, HeightValue);
+    case ECell::Savannah: // Savannah
+        return FMath::Lerp(0.2f, 0.4f, HeightValue);
+    case ECell::Highland: // Highland
+        return FMath::Lerp(0.5f, 0.8f, HeightValue);
+    case ECell::IcePlains: // IcePlains
+        return FMath::Lerp(0.3f, 0.5f, HeightValue);
+    case ECell::Ice: // Ice
+        return FMath::Lerp(0.2f, 0.9f, HeightValue);
+    case ECell::SwampShore: // SwampShore
+        return FMath::Lerp(0.05f, 0.25f, HeightValue);
+
     default:
         // For unrecognized biomes, return the original height
         return HeightValue;
     }
 }
+
 
 
 FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeType)
@@ -244,7 +258,7 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
     switch (BiomeType)
     {
     case ECell::Ocean:
-        Color = FLinearColor(0.28f, 0.46f, 0.80f); // Shallow Water
+        Color = FLinearColor(0.0f, 0.2509f, 0.501f); // Shallow Water
         break;
     case ECell::DeepOcean:
         Color = FLinearColor(0.05f, 0.19f, 0.57f); // Deep Water
@@ -299,10 +313,10 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
         Color = FLinearColor(76, 152, 123);
         break;
     case ECell::Land:
-        Color = FLinearColor::Black;
+        Color = FLinearColor::Black; 
         break;
     case ECell::Ice:
-        Color = FLinearColor(191, 199, 214);
+        Color = FLinearColor(191,199,214);
         break;
         // Add more biome cases as necessary.
 
@@ -332,18 +346,20 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = RemoveTooMuchOcean(Board);
     PrintBoard(Board);
     Board = AddTemps(Board);
-    Board = AddIsland(Board);
+    Board = AddIsland2(Board);
     Board = WarmToTemperate(Board);
+    PrintBoard(Board);
     Board = FreezingToCold(Board);
+    PrintBoard(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
-    Board = AddIsland(Board);
+    Board = AddIsland2(Board);
     //Board = DeepOcean(Board);
     Board = TemperatureToBiome(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
-    Board = AddIsland(Board);
+    Board = AddIsland2(Board);
     Board = Zoom(Board);
     //Board = Shore(Board);
     //PrintBoard(Board); // Print the resulting board
@@ -351,7 +367,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
 }
 
 
-TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>& Board) {
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>&Board) {
     TArray<TArray<ECell>> ModifiedBoard = Board; // Make a copy of the board to modify and return.
 
     int ShoreDepth = 0;
@@ -506,8 +522,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Zoom(const TArray<TArray<E
                 int32 new_i = FMath::Clamp(i + xoff, 0, ScaledRows - 1);
                 int32 new_j = FMath::Clamp(j + yoff, 0, ScaledCols - 1);
 
-                // Here you might choose to set the cell to a new value, mix values, or apply other logic
-                // For simplicity, we're just copying from the new location, but consider more complex logic
                 ScaledBoard[i][j] = ScaledBoard[new_i][new_j];
             }
         }
@@ -521,37 +535,15 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
 {
     const float PLand = 0.6f;
     const int32 Rows = Board.Num();
-    const int32 Cols = Board[0].Num();
-    TArray<TArray<ECell>> NextBoard = Board; // Assuming you have a way to deep copy
+    const int32 Cols = Board[0].Num(); 
+    TArray<TArray<ECell>> NextBoard = Board; 
 
     FRandomStream Rng;
     Rng.GenerateNewSeed();
 
-    auto IsEdgeCell = [&](int32 r, int32 c) -> bool {
-        if (Board[r][c] != ECell::Ocean) {
-            for (const auto& Offset : { FIntPoint(-1, 0), FIntPoint(1, 0), FIntPoint(0, -1), FIntPoint(0, 1) }) {
-                int32 nr = r + Offset.X;
-                int32 nc = c + Offset.Y;
-                if (nr >= 0 && nr < Rows && nc >= 0 && nc < Cols && Board[nr][nc] == ECell::Ocean) {
-                    return true;
-                }
-            }
-        }
-        else {
-            for (const auto& Offset : { FIntPoint(-1, 0), FIntPoint(1, 0), FIntPoint(0, -1), FIntPoint(0, 1) }) {
-                int32 nr = r + Offset.X;
-                int32 nc = c + Offset.Y;
-                if (nr >= 0 && nr < Rows && nc >= 0 && nc < Cols && Board[nr][nc] != ECell::Ocean) {
-                    return true;
-                }
-            }
-        }
-        return false;
-        };
-
     for (int32 i = 0; i < Rows; ++i) {
         for (int32 j = 0; j < Cols; ++j) {
-            if (IsEdgeCell(i, j) && CanTransform(Board[i][j])) {
+            if (IsEdgeCell(Board, i, j) && CanTransform(Board[i][j])) {
                 ECell NewState = Rng.FRand() < PLand ? ECell::Land : ECell::Ocean;
                 NextBoard[i][j] = NewState;
             }
@@ -560,6 +552,66 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
 
     return NextBoard;
 }
+
+
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland2(const TArray<TArray<ADiamondSquare::ECell>>& Board)
+{
+    const int32 Rows = Board.Num();
+    const int32 Cols = Board[0].Num(); // Assuming the board is at least 1x1
+    TArray<TArray<ECell>> NextBoard = Board; // Assuming you have a way to deep copy
+
+    // Directions to check: Up, Down, Left, Right
+    TArray<FIntPoint> Directions = {
+        FIntPoint(-1, 0), // Up
+        FIntPoint(1, 0),  // Down
+        FIntPoint(0, -1), // Left
+        FIntPoint(0, 1)   // Right
+    };
+
+    for (int32 i = 0; i < Rows; ++i) {
+        for (int32 j = 0; j < Cols; ++j) {
+            // Use the IsEdgeCell function
+            if (IsEdgeCell(Board, i, j) && CanTransform(Board[i][j])) {
+                // Map to count the occurrences of each ECell type, excluding Ocean
+                TMap<ECell, int32> CellTypeCounts;
+
+                for (const FIntPoint& Dir : Directions) {
+                    int32 NR = i + Dir.X;
+                    int32 NC = j + Dir.Y;
+
+                    // Ensure the neighbor is within bounds
+                    if (NR >= 0 && NR < Rows && NC >= 0 && NC < Cols) {
+                        ECell NeighborCell = Board[NR][NC];
+                        // Increment count if not Ocean
+                        if (NeighborCell != ECell::Ocean) {
+                            CellTypeCounts.FindOrAdd(NeighborCell)++;
+                        }
+                    }
+                }
+
+                // Determine the majority cell type, excluding Ocean
+                ECell MajorityType = ECell::Ocean; // Default to Ocean if no majority found
+                int32 MaxCount = 0;
+                for (const auto& Kvp : CellTypeCounts) {
+                    if (Kvp.Value > MaxCount) {
+                        MajorityType = Kvp.Key;
+                        MaxCount = Kvp.Value;
+                    }
+                }
+
+                // If a majority type is found, update the cell
+                NextBoard[i][j] = MajorityType;
+
+            }
+        }
+    }
+
+    return NextBoard;
+}
+
+
+
+
 // CanTransform checks if a cell of a given type is eligible for transformation.
 // It returns true if the cell can be transformed, and false otherwise.
 bool ADiamondSquare::CanTransform(ECell CellType) const {
@@ -905,28 +957,53 @@ void ADiamondSquare::SetBoardRegion(TArray<TArray<ECell>>& Board, int32 CenterX,
 // Main function to convert freezing land adjacent to warm or temperate regions to cold
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::FreezingToCold(const TArray<TArray<ECell>>& Board)
 {
-    int32 Radius = 1;
     TArray<TArray<ECell>> NextBoard = Board; // Copy board
     int32 Rows = Board.Num();
     int32 Cols = Board[0].Num(); // Assuming all rows are the same length
 
-    TSet<ECell> GroupA = { ECell::Freezing };
-    TSet<ECell> GroupB = { ECell::Cold, ECell::Temperate };
-
-    for (int32 i = 0; i < Rows; ++i)
+    for (int32 Row = 0; Row < Rows; ++Row)
     {
-        for (int32 j = 0; j < Cols; ++j)
+        for (int32 Column = 0; Column < Cols; ++Column)
         {
-            if (IsAdjacentToGroup(Board, i, j, GroupA, GroupB))
+            // Check if the current cell is Freezing
+            if (Board[Row][Column] == ECell::Freezing)
             {
-                SetBoardRegion(NextBoard, i, j, Radius, ECell::Cold);
+                // Check adjacent cells for Warm or Temperate
+                bool AdjacentToWarmer = false;
+
+                // Directions: Up, Down, Left, Right
+                TArray<FIntPoint> Directions = {
+                    FIntPoint(-1, 0), // Up
+                    FIntPoint(1, 0),  // Down
+                    FIntPoint(0, -1), // Left
+                    FIntPoint(0, 1)   // Right
+                };
+
+                for (const FIntPoint& Dir : Directions)
+                {
+                    int32 AdjRow = Row + Dir.X;
+                    int32 AdjCol = Column + Dir.Y;
+
+                    // Check bounds and then check for Warm or Temperate
+                    if (AdjRow >= 0 && AdjRow < Rows && AdjCol >= 0 && AdjCol < Cols &&
+                        (Board[AdjRow][AdjCol] == ECell::Warm || Board[AdjRow][AdjCol] == ECell::Temperate))
+                    {
+                        AdjacentToWarmer = true;
+                        break; // Break as we only need one match
+                    }
+                }
+
+                // If adjacent to a warmer cell, change to Cold
+                if (AdjacentToWarmer)
+                {
+                    NextBoard[Row][Column] = ECell::Cold;
+                }
             }
         }
     }
 
     return NextBoard;
 }
-
 
 ADiamondSquare::ECell ADiamondSquare::SelectBiome(const TArray<ECell>& Biomes, const TArray<float>& Odds, FRandomStream& Rng)
 {
@@ -960,13 +1037,13 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TemperatureToBiome(const T
                 if (Board[Row][Col] == ECell::Warm)
                 {
                     TArray<ECell> Biomes = { ECell::Desert, ECell::Plains, ECell::Rainforest, ECell::Savannah, ECell::Swamp };
-                    TArray<float> Odds = { 0.3f, 0.3f, 0.2f, 0.1f, 0.1f };
+                    TArray<float> Odds = { 0.2f, 0.4f, 0.18f, 0.2f, 0.02f };
                     NewBoard[Row][Col] = SelectBiome(Biomes, Odds, Rng);
                 }
                 else if (Board[Row][Col] == ECell::Temperate)
                 {
                     TArray<ECell> Biomes = { ECell::Woodland, ECell::Forest, ECell::Highland };
-                    TArray<float> Odds = { 0.5f, 0.25f, 0.25f };
+                    TArray<float> Odds = { 0.2f, 0.55f, 0.25f };
                     NewBoard[Row][Col] = SelectBiome(Biomes, Odds, Rng);
                 }
                 else if (Board[Row][Col] == ECell::Cold)
