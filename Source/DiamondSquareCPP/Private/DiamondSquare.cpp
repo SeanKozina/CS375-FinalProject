@@ -1,7 +1,9 @@
 #include "DiamondSquare.h"
 #include "Engine/World.h"
+#include "HAL/PlatformTime.h"
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogDiamondSquare, Log, All);
 DEFINE_LOG_CATEGORY(LogDiamondSquare);
@@ -15,26 +17,6 @@ ADiamondSquare::ADiamondSquare()
     ProceduralMesh->SetupAttachment(GetRootComponent());
 }
 
-
-// ADiamondSquare::OnConstruction
-// -------------------------------
-// Purpose: 
-//   Constructs a procedural mesh for the ADiamondSquare class. This function is called
-//   when an instance of ADiamondSquare is constructed or modified in the Unreal Editor.
-//   It uses Perlin noise for vertex generation and creates a mesh with calculated normals
-//   and tangents, applying a specified material.
-//
-// Parameters:
-//   - const FTransform& Transform: The transformation (position, rotation, scale) applied to the object.
-//
-// Usage:
-//   This function is automatically invoked during the construction of an ADiamondSquare object
-//   or when its properties are updated in the editor. It is responsible for the procedural
-//   generation and updating of the mesh based on the current parameters and noise map.
-//
-// Note:
-//   The function depends on Unreal Engine's procedural mesh capabilities and is designed for use
-//   within this game engine.
 void ADiamondSquare::OnConstruction(const FTransform& Transform)
 {
     // Call the superclass's OnConstruction to handle basic setup
@@ -42,6 +24,7 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
 
     // Check if the mesh needs to be recreated
     if (recreateMesh) {
+        double StartTimeOC = FPlatformTime::Seconds();
         auto NoiseMap = GeneratePerlinNoiseMap();
 
         // Reset mesh data to prepare for new mesh creation
@@ -53,12 +36,19 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
         CreateVertices(NoiseMap);
         CreateTriangles();
 
+
         // Calculate normals and tangents for the mesh
         UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+
+
 
         // Create the mesh section with the specified data and apply the material
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
         ProceduralMesh->SetMaterial(0, Material);
+
+        double EndTimeOC = FPlatformTime::Seconds();
+        double ElapsedTimeOC = EndTimeOC - StartTimeOC;
+        UE_LOG(LogTemp, Warning, TEXT("Construction took %f seconds"), ElapsedTimeOC);
 
         // Reset the flag to avoid unnecessary mesh recreation
         recreateMesh = false;
@@ -79,9 +69,9 @@ void ADiamondSquare::Tick(float DeltaTime)
 
 }
 
-
 void ADiamondSquare::CreateTriangles()
 {
+    double StartTime = FPlatformTime::Seconds();
     for (int X = 0; X < XSize - 1; ++X)
     {
         for (int Y = 0; Y < YSize - 1; ++Y)
@@ -99,11 +89,16 @@ void ADiamondSquare::CreateTriangles()
             Triangles.Add(VertexIndex + YSize + 1);      // Top right
         }
     }
+    double EndTime = FPlatformTime::Seconds();
+    double ElapsedTime = EndTime - StartTime;
+    UE_LOG(LogTemp, Warning, TEXT("CreateTriangles took %f seconds"), ElapsedTime);
 }
+
 
 
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
 {
+    double StartTimeCV = FPlatformTime::Seconds();
     // Prepare the Colors array for new data
     Colors.Empty();
     FLinearColor Color;
@@ -136,24 +131,19 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
         // Create the mesh section with the generated data
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
     }
-
-    // Log the size of the Colors and Vertices arrays
-    UE_LOG(LogTemp, Warning, TEXT("Size of Colors array: %d"), Colors.Num());
-    UE_LOG(LogTemp, Warning, TEXT("Size of Vertices array: %d"), Vertices.Num());
-
-    // Check and log if Colors and Vertices arrays sizes are mismatched
-    if (Colors.Num() != Vertices.Num()) {
-        UE_LOG(LogTemp, Error, TEXT("Error: Colors array and Vertices array are not the same size."));
-    }
+    double EndTimeCV = FPlatformTime::Seconds();
+    double ElapsedTimeCV = EndTimeCV - StartTimeCV;
+    UE_LOG(LogTemp, Warning, TEXT("CreateVertices took %f seconds"), ElapsedTimeCV);
 }
 
 
 TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
 {
+
     // Reset and create the BiomeMap
     BiomeMap.Empty();
     BiomeMap = TestIsland();
-
+    double StartTimeGP = FPlatformTime::Seconds();
     // Initialize the NoiseMap array
     TArray<TArray<float>> NoiseMap;
     NoiseMap.Init(TArray<float>(), XSize);
@@ -193,6 +183,9 @@ TArray<TArray<float>> ADiamondSquare::GeneratePerlinNoiseMap()
             NoiseMap[X][Y] = FMath::Clamp(NoiseHeight, 0.0f, 1.0f);
         }
     }
+    double EndTimeGP = FPlatformTime::Seconds();
+    double ElapsedTimeGP = EndTimeGP - StartTimeGP;
+    UE_LOG(LogTemp, Warning, TEXT("GeneratePerlinNoiseMap took %f seconds"), ElapsedTimeGP);
 
     // Return the generated Perlin noise map
     return NoiseMap;
@@ -333,6 +326,7 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
 // Example usage within the ADiamondSquare class
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
 {
+    double StartTimeTI = FPlatformTime::Seconds();
     TArray<TArray<ECell>> Board;
     Island(Board); // Adjust Island function to return the board
     Board = FuzzyZoom(Board);
@@ -354,15 +348,19 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = AddIsland2(Board);
-    //Board = DeepOcean(Board);
+    Board = DeepOcean(Board);
     Board = TemperatureToBiome(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = AddIsland2(Board);
     Board = Zoom(Board);
+    Board = Zoom(Board);
     //Board = Shore(Board);
     //PrintBoard(Board); // Print the resulting board
+    double EndTimeTI = FPlatformTime::Seconds();
+    double ElapsedTimeTI = EndTimeTI - StartTimeTI;
+    UE_LOG(LogTemp, Warning, TEXT("BiomeMap took %f seconds"), ElapsedTimeTI);
     return Board;
 }
 

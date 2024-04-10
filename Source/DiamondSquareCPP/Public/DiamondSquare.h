@@ -108,6 +108,7 @@ private:
     FLinearColor GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeType);
     float GetInterpolatedHeight(float heightValue, ECell BiomeType);
 
+    FCriticalSection CriticalSection;
 
     //Schostaic Automata Stack to Create Biome Map
     TArray<TArray<ECell>> Island(TArray<TArray<ECell>>& Board);
