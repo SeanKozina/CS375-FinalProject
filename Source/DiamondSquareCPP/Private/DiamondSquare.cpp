@@ -457,7 +457,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = Zoom(Board);
     Board = AddIsland2(Board);
     Board = Zoom(Board);
-    Board = Shore(Board);
+    //Board = Shore(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
 
