@@ -55,25 +55,25 @@ public:
     int YSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    float ZMultiplier = 1000.0f;
+    float ZMultiplier = 38.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    float ZExpo = 1;
+    float ZExpo = 1.1;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    float Scale = 10.0f;
+    float Scale = 500.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
     float UVScale = 0.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    int Octaves = 1;
+    int Octaves = 12;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    float Lacunarity = 2.0f;
+    float Lacunarity = 7.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    float Persistence = 0.5f;
+    float Persistence = 0.7f;
 
     UPROPERTY(EditAnywhere)
     bool SurroundMapWithOcean = false;

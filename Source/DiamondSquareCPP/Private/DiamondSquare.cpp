@@ -467,7 +467,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = AddIsland2(Board);
     Board = Zoom(Board);
     //Board = Shore(Board);
-    Board = Zoom(Board);
+    //Board = Zoom(Board);
     //Board = Zoom(Board);
 
     if (Board.Num() > 0)
