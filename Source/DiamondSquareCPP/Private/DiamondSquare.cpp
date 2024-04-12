@@ -440,6 +440,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
 {
     double StartTimeTI = FPlatformTime::Seconds();
     TArray<TArray<ECell>> Board;
+    InitializeSeed();
     Island(Board); // Adjust Island function to return the board
     Board = FuzzyZoom(Board);
     Board = AddIsland(Board);
@@ -486,38 +487,10 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     return Board;
 }
 
-
-TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>&Board) {
-    TArray<TArray<ECell>> ModifiedBoard = Board; // Make a copy of the board to modify and return.
-
-    int ShoreDepth = 0;
-    int SwampShoreDepth = 0;
-
-    // Define ignore cells set using TSet for Unreal Engine.
-    TSet<ECell> IgnoreSet = { ECell::Tundra, ECell::IcePlains, ECell::Taiga, ECell::SnowyForest,ECell::DeepOcean };
-
-    for (int32 Row = 0; Row < Board.Num(); ++Row) {
-        for (int32 Col = 0; Col < Board[Row].Num(); ++Col) {
-            if (IsEdgeCell(Board, Row, Col)) {
-                ECell CurrentCell = Board[Row][Col];
-                // Check if the current cell should be ignored.
-                if (!IgnoreSet.Contains(CurrentCell)) {
-                    // Apply logic for non-ocean cells adjacent to ocean.
-                    if (CurrentCell != ECell::Ocean) {
-                        // Check if the current cell is Swamp for special treatment.
-                        if (CurrentCell == ECell::Swamp) {
-                            SetBoardRegion(ModifiedBoard, Row, Col, SwampShoreDepth, ECell::SwampShore);
-                        }
-                        else {
-                            SetBoardRegion(ModifiedBoard, Row, Col, ShoreDepth, ECell::Beach);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return ModifiedBoard;
+void ADiamondSquare::InitializeSeed()
+{
+    Rng.Initialize(Seed);
+    UE_LOG(LogTemp, Warning, TEXT("Random Number Generator Seeded with: %d"), Seed);
 }
 
 
@@ -564,14 +537,11 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::DeepOcean(const TArray<TAr
 }
 
 
-TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddTemps(const TArray<TArray<ADiamondSquare::ECell>>& Board)
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddTemps(const TArray<TArray<ECell>>& Board)
 {
     const int32 Rows = Board.Num();
     const int32 Cols = Board[0].Num();
-    TArray<TArray<ECell>> NewBoard = Board; // Assuming a shallow copy is sufficient for your use case
-
-    FRandomStream Rng;
-    Rng.GenerateNewSeed();
+    TArray<TArray<ECell>> NewBoard = Board;
 
     for (int32 i = 0; i < Rows; ++i)
     {
@@ -594,13 +564,11 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddTemps(const TArray<TArr
             {
                 NewBoard[i][j] = ECell::Freezing;
             }
-
         }
     }
 
     return NewBoard;
 }
-
 
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Zoom(const TArray<TArray<ECell>>& Board)
 {
@@ -655,11 +623,8 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
 {
     const float PLand = 0.6f;
     const int32 Rows = Board.Num();
-    const int32 Cols = Board[0].Num(); 
-    TArray<TArray<ECell>> NextBoard = Board; 
-
-    FRandomStream Rng;
-    Rng.GenerateNewSeed();
+    const int32 Cols = Board[0].Num();
+    TArray<TArray<ECell>> NextBoard = Board; // Copy the original board to modify
 
     for (int32 i = 0; i < Rows; ++i) {
         for (int32 j = 0; j < Cols; ++j) {
@@ -672,7 +637,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
 
     return NextBoard;
 }
-
 
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland2(const TArray<TArray<ADiamondSquare::ECell>>& Board)
 {
@@ -761,10 +725,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::FuzzyZoom(const TArray<TAr
         }
     }
 
-    // Random number generator
-    FRandomStream Rng;
-    Rng.GenerateNewSeed();
-
     for (int32 i = 0; i < Rows * 2; ++i)
     {
         for (int32 j = 0; j < Cols * 2; ++j)
@@ -842,10 +802,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Island(TArray<TArray<ECell
         }
     }
 
-    // Seed random number generator
-    FRandomStream Rng;
-    Rng.GenerateNewSeed();
-
     // Populate the board with land cells based on ProbLand
     for (int32 i = 0; i < 4; ++i)
     {
@@ -864,89 +820,10 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Island(TArray<TArray<ECell
 }
 
 
-void ADiamondSquare::PrintBoard(const TArray<TArray<ECell>>& Board)
-{
-    FString BoardString;
-
-    for (int32 i = 0; i < Board.Num(); ++i)
-    {
-        for (int32 j = 0; j < Board[i].Num(); ++j)
-        {
-            switch (Board[i][j])
-            {
-            case ECell::Land:
-                BoardString += TEXT("L "); // Land
-                break;
-            case ECell::Ocean:
-                BoardString += TEXT("O "); // Ocean
-                break;
-            case ECell::Warm:
-                BoardString += TEXT("W "); // Warm
-                break;
-            case ECell::Temperate:
-                BoardString += TEXT("T "); // Temperate
-                break;
-            case ECell::Cold:
-                BoardString += TEXT("C "); // Cold
-                break;
-            case ECell::Freezing:
-                BoardString += TEXT("F "); // Freezing
-                break;
-                // Adding new biome types
-            case ECell::Desert:
-                BoardString += TEXT("D "); // Desert
-                break;
-            case ECell::Plains:
-                BoardString += TEXT("P "); // Plains
-                break;
-            case ECell::Rainforest:
-                BoardString += TEXT("R "); // Rainforest
-                break;
-            case ECell::Savannah:
-                BoardString += TEXT("S "); // Savannah
-                break;
-            case ECell::Swamp:
-                BoardString += TEXT("M "); // Swamp
-                break;
-            case ECell::Woodland:
-                BoardString += TEXT("w "); // Woodland
-                break;
-            case ECell::Forest:
-                BoardString += TEXT("f "); // Forest
-                break;
-            case ECell::Highland:
-                BoardString += TEXT("h "); // Highland
-                break;
-            case ECell::Taiga:
-                BoardString += TEXT("t "); // Taiga
-                break;
-            case ECell::SnowyForest:
-                BoardString += TEXT("s "); // Snowy Forest
-                break;
-            case ECell::Tundra:
-                BoardString += TEXT("t "); // Tundra
-                break;
-            case ECell::IcePlains:
-                BoardString += TEXT("i "); // Ice Plains
-                break;
-            default:
-                BoardString += TEXT("? "); // Unknown cell type
-                break;
-            }
-        }
-        BoardString += TEXT("\n");
-    }
-
-    // Print the board to the output log
-    UE_LOG(LogTemp, Warning, TEXT("%s"), *BoardString);
-}
-
 
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::RemoveTooMuchOcean(const TArray<TArray<ADiamondSquare::ECell>>& Board)
 {
     const float PLand = 0.35f; // Probability of changing an ocean cell to land
-    FRandomStream Rng;
-    Rng.GenerateNewSeed();
 
     TArray<TArray<ECell>> NewBoard = Board; // Assuming deep copy isn't needed
 
@@ -1125,7 +1002,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::FreezingToCold(const TArra
     return NextBoard;
 }
 
-ADiamondSquare::ECell ADiamondSquare::SelectBiome(const TArray<ECell>& Biomes, const TArray<float>& Odds, FRandomStream& Rng)
+ADiamondSquare::ECell ADiamondSquare::SelectBiome(const TArray<ECell>& Biomes, const TArray<float>& Odds)
 {
     float Roll = Rng.FRand(); // Roll a random number between 0.0 and 1.0
     float Cumulative = 0.0f;
@@ -1144,8 +1021,6 @@ ADiamondSquare::ECell ADiamondSquare::SelectBiome(const TArray<ECell>& Biomes, c
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TemperatureToBiome(const TArray<TArray<ECell>>& Board)
 {
     TArray<TArray<ECell>> NewBoard = Board;
-    FRandomStream Rng;
-    Rng.GenerateNewSeed();
 
     for (int32 Row = 0; Row < Board.Num(); ++Row)
     {
@@ -1158,25 +1033,25 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TemperatureToBiome(const T
                 {
                     TArray<ECell> Biomes = { ECell::Desert, ECell::Plains, ECell::Rainforest, ECell::Savannah, ECell::Swamp };
                     TArray<float> Odds = { 0.2f, 0.4f, 0.18f, 0.2f, 0.02f };
-                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds, Rng);
+                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
                 else if (Board[Row][Col] == ECell::Temperate)
                 {
                     TArray<ECell> Biomes = { ECell::Woodland, ECell::Forest, ECell::Highland };
                     TArray<float> Odds = { 0.2f, 0.55f, 0.25f };
-                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds, Rng);
+                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
                 else if (Board[Row][Col] == ECell::Cold)
                 {
                     TArray<ECell> Biomes = { ECell::Taiga, ECell::SnowyForest };
                     TArray<float> Odds = { 0.5f, 0.5f };
-                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds, Rng);
+                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
                 else if (Board[Row][Col] == ECell::Freezing)
                 {
                     TArray<ECell> Biomes = { ECell::Tundra, ECell::IcePlains };
                     TArray<float> Odds = { 0.7f, 0.3f };
-                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds, Rng);
+                    NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
             }
         }
@@ -1211,16 +1086,112 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::SurroundWithOcean(TArray<T
 }
 
 
-
-void ADiamondSquare::SeedRandomNumberGenerator()
+void ADiamondSquare::PrintBoard(const TArray<TArray<ECell>>& Board)
 {
-    // Use the current time as a seed value
-    Seed = FDateTime::Now().GetTicks();
+    FString BoardString;
 
-    // Initialize the random number generator with the seed
-    FMath::RandInit(Seed);
+    for (int32 i = 0; i < Board.Num(); ++i)
+    {
+        for (int32 j = 0; j < Board[i].Num(); ++j)
+        {
+            switch (Board[i][j])
+            {
+            case ECell::Land:
+                BoardString += TEXT("L "); // Land
+                break;
+            case ECell::Ocean:
+                BoardString += TEXT("O "); // Ocean
+                break;
+            case ECell::Warm:
+                BoardString += TEXT("W "); // Warm
+                break;
+            case ECell::Temperate:
+                BoardString += TEXT("T "); // Temperate
+                break;
+            case ECell::Cold:
+                BoardString += TEXT("C "); // Cold
+                break;
+            case ECell::Freezing:
+                BoardString += TEXT("F "); // Freezing
+                break;
+                // Adding new biome types
+            case ECell::Desert:
+                BoardString += TEXT("D "); // Desert
+                break;
+            case ECell::Plains:
+                BoardString += TEXT("P "); // Plains
+                break;
+            case ECell::Rainforest:
+                BoardString += TEXT("R "); // Rainforest
+                break;
+            case ECell::Savannah:
+                BoardString += TEXT("S "); // Savannah
+                break;
+            case ECell::Swamp:
+                BoardString += TEXT("M "); // Swamp
+                break;
+            case ECell::Woodland:
+                BoardString += TEXT("w "); // Woodland
+                break;
+            case ECell::Forest:
+                BoardString += TEXT("f "); // Forest
+                break;
+            case ECell::Highland:
+                BoardString += TEXT("h "); // Highland
+                break;
+            case ECell::Taiga:
+                BoardString += TEXT("t "); // Taiga
+                break;
+            case ECell::SnowyForest:
+                BoardString += TEXT("s "); // Snowy Forest
+                break;
+            case ECell::Tundra:
+                BoardString += TEXT("t "); // Tundra
+                break;
+            case ECell::IcePlains:
+                BoardString += TEXT("i "); // Ice Plains
+                break;
+            default:
+                BoardString += TEXT("? "); // Unknown cell type
+                break;
+            }
+        }
+        BoardString += TEXT("\n");
+    }
 
-    // Optionally, log the seed value for debugging purposes
-    UE_LOG(LogTemp, Warning, TEXT("Random Number Generator Seeded with: %d"), Seed);
+    // Print the board to the output log
+    UE_LOG(LogTemp, Warning, TEXT("%s"), *BoardString);
 }
 
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>& Board) {
+    TArray<TArray<ECell>> ModifiedBoard = Board; // Make a copy of the board to modify and return.
+
+    int ShoreDepth = 0;
+    int SwampShoreDepth = 0;
+
+    // Define ignore cells set using TSet for Unreal Engine.
+    TSet<ECell> IgnoreSet = { ECell::Tundra, ECell::IcePlains, ECell::Taiga, ECell::SnowyForest,ECell::DeepOcean };
+
+    for (int32 Row = 0; Row < Board.Num(); ++Row) {
+        for (int32 Col = 0; Col < Board[Row].Num(); ++Col) {
+            if (IsEdgeCell(Board, Row, Col)) {
+                ECell CurrentCell = Board[Row][Col];
+                // Check if the current cell should be ignored.
+                if (!IgnoreSet.Contains(CurrentCell)) {
+                    // Apply logic for non-ocean cells adjacent to ocean.
+                    if (CurrentCell != ECell::Ocean) {
+                        // Check if the current cell is Swamp for special treatment.
+                        if (CurrentCell == ECell::Swamp) {
+                            SetBoardRegion(ModifiedBoard, Row, Col, SwampShoreDepth, ECell::SwampShore);
+                        }
+                        else {
+                            SetBoardRegion(ModifiedBoard, Row, Col, ShoreDepth, ECell::Beach);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return ModifiedBoard;
+}

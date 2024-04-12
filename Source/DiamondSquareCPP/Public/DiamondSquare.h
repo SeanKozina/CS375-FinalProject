@@ -93,7 +93,6 @@ public:
 
     void PlaceEnvironmentObjects(const TArray<TArray<float>>& NoiseMap);
 
-
 protected:
     virtual void BeginPlay() override;
     virtual void OnConstruction(const FTransform& Transform) override;
@@ -124,6 +123,7 @@ private:
     FLinearColor GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeType);
     float GetInterpolatedHeight(float heightValue, ECell BiomeType);
 
+    FRandomStream Rng;
 
     //Schostaic Automata Stack to Create Biome Map
     TArray<TArray<ECell>> Island(TArray<TArray<ECell>>& Board);
@@ -143,7 +143,7 @@ private:
 
 
     //helper functions
-    ECell SelectBiome(const TArray<ECell>& Biomes, const TArray<float>& Odds, FRandomStream& Rng);
+    ECell SelectBiome(const TArray<ECell>& Biomes, const TArray<float>& Odds);
     void SetBoardRegion(TArray<TArray<ECell>>& Board, int32 CenterX, int32 CenterY, int32 Radius, ECell NewState);
     bool IsAdjacentToGroup(const TArray<TArray<ECell>>& Board, int32 X, int32 Y, const TSet<ECell>& GroupA, const TSet<ECell>& GroupB);
     bool IsSurroundedByOcean(const TArray<TArray<ECell>>& Board, int32 i, int32 j);
@@ -151,5 +151,5 @@ private:
     void PrintBoard(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> TestIsland();
     bool CanTransform(ECell CellType) const; 
-    void SeedRandomNumberGenerator();
+    void InitializeSeed();
 };
