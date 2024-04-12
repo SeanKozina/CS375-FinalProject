@@ -20,7 +20,7 @@ ADiamondSquare::ADiamondSquare()
     TreeMeshComponent->SetupAttachment(ProceduralMesh); // Attach to the root component
 
     // Assign the static mesh asset to the TreeMeshComponent
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> TreeMeshAsset(TEXT("/Game/Fantastic_Village_Pack/meshes/environment/SM_ENV_TREE_village_LOD0"));
+    /*static ConstructorHelpers::FObjectFinder<UStaticMesh> TreeMeshAsset(TEXT("/Game/Fantastic_Village_Pack/meshes/environment/SM_ENV_TREE_village_LOD0"));
     if (TreeMeshAsset.Succeeded())
     {
         TreeMeshComponent->SetStaticMesh(TreeMeshAsset.Object);
@@ -28,7 +28,7 @@ ADiamondSquare::ADiamondSquare()
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("Failed to load tree mesh."));
-    }
+    }*/
 
     // PrimaryActorTick.bCanEverTick is set to false by default, but you can enable it if needed.
     PrimaryActorTick.bCanEverTick = false;
@@ -89,6 +89,16 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
         double EndTimeOC = FPlatformTime::Seconds();
         double ElapsedTimeOC = EndTimeOC - StartTimeOC;
         UE_LOG(LogTemp, Warning, TEXT("Construction took %f seconds"), ElapsedTimeOC);
+
+        // Reset mesh data to prepare for new mesh creation
+        Normals.Reset();
+        Tangents.Reset();
+        UV0.Reset();
+        Colors.Reset();
+        Vertices.Reset();
+        Triangles.Reset();
+        UV0.Reset();
+        BiomeMap.Reset();
 
         // Reset the flag to avoid unnecessary mesh recreation
         CalculateTangents = false;
@@ -323,15 +333,15 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
     case ECell::Tundra: // Tundra
         return FMath::Lerp(0.25f, 0.65f, HeightValue);
     case ECell::Rainforest: // Rainforest
-        return FMath::Lerp(0.2f, 0.45f, HeightValue);
+        return FMath::Lerp(0.2f, 0.55f, HeightValue);
     case ECell::Woodland: // Woodland
         return FMath::Lerp(0.3f, 0.5f, HeightValue);
     case ECell::Savannah: // Savannah
-        return FMath::Lerp(0.2f, 0.4f, HeightValue);
+        return FMath::Lerp(0.2f, 0.5f, HeightValue);
     case ECell::Highland: // Highland
-        return FMath::Lerp(0.5f, 0.8f, HeightValue);
+        return FMath::Lerp(0.3f, 0.99f, HeightValue);
     case ECell::IcePlains: // IcePlains
-        return FMath::Lerp(0.3f, 0.5f, HeightValue);
+        return FMath::Lerp(0.1f, 0.5f, HeightValue);
     case ECell::Ice: // Ice
         return FMath::Lerp(0.2f, 0.9f, HeightValue);
     case ECell::SwampShore: // SwampShore
@@ -433,20 +443,18 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Island(Board); // Adjust Island function to return the board
     Board = FuzzyZoom(Board);
     Board = AddIsland(Board);
-    PrintBoard(Board);
     Board = Zoom(Board);
     Board = AddIsland(Board);
     Board = AddIsland(Board);
     Board = AddIsland(Board);
-    PrintBoard(Board);
     Board = RemoveTooMuchOcean(Board);
-    PrintBoard(Board);
     Board = AddTemps(Board);
     Board = AddIsland2(Board);
     Board = WarmToTemperate(Board);
-    PrintBoard(Board);
     Board = FreezingToCold(Board);
-    PrintBoard(Board);
+    if (SurroundMapWithOcean) {
+        Board = SurroundWithOcean(Board);
+    }
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = AddIsland2(Board);
@@ -459,7 +467,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = Zoom(Board);
     //Board = Shore(Board);
     Board = Zoom(Board);
-    Board = Zoom(Board);
+    //Board = Zoom(Board);
 
     if (Board.Num() > 0)
     {
@@ -1176,6 +1184,32 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TemperatureToBiome(const T
 
     return NewBoard;
 }
+
+
+TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::SurroundWithOcean(TArray<TArray<ECell>>& Board)
+{
+    int32 Rows = Board.Num();
+    if (Rows == 0) return Board;
+
+    int32 Cols = Board[0].Num();
+
+    // Set the top and bottom rows to Ocean
+    for (int32 Col = 0; Col < Cols; ++Col)
+    {
+        Board[0][Col] = ECell::Ocean;
+        Board[Rows - 1][Col] = ECell::Ocean;
+    }
+
+    // Set the first and last columns to Ocean
+    for (int32 Row = 0; Row < Rows; ++Row)
+    {
+        Board[Row][0] = ECell::Ocean;
+        Board[Row][Cols - 1] = ECell::Ocean;
+    }
+
+    return Board;
+}
+
 
 
 void ADiamondSquare::SeedRandomNumberGenerator()

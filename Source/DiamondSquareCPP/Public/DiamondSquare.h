@@ -48,10 +48,10 @@ public:
     UPROPERTY(EditAnywhere)
     bool recreateMesh = false;
 
-    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0), Meta = (ClampMax = 4096))
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0), Meta = (ClampMax = 2048))
     int XSize = 200;
 
-    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0), Meta = (ClampMax = 4096))
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0), Meta = (ClampMax = 2048))
     int YSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
@@ -74,6 +74,9 @@ public:
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
     float Persistence = 0.5f;
+
+    UPROPERTY(EditAnywhere)
+    bool SurroundMapWithOcean = false;
 
     UPROPERTY(EditAnywhere)
     bool CalculateTangents = false;
@@ -135,7 +138,7 @@ private:
     TArray<TArray<ECell>> TemperatureToBiome(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> DeepOcean(const TArray<TArray<ECell>>& Board);
     TArray<TArray<ECell>> Shore(const TArray<TArray<ECell>>& Board);
-
+    TArray<TArray<ECell>> SurroundWithOcean(TArray<TArray<ECell>>& Board);
 
 
 
