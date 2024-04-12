@@ -46,12 +46,12 @@ public:
     ADiamondSquare();
 
     UPROPERTY(EditAnywhere)
-    bool recreateMesh = true;
+    bool recreateMesh = false;
 
-    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0), Meta = (ClampMax = 4096))
     int XSize = 200;
 
-    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0), Meta = (ClampMax = 4096))
     int YSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
@@ -75,8 +75,21 @@ public:
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
     float Persistence = 0.5f;
 
+    UPROPERTY(EditAnywhere)
+    bool CalculateTangents = false;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
     int32 Seed = 0;
+
+    UPROPERTY(EditAnywhere, Category = "Procedural Generation")
+    bool addProceduralObjects = false;
+
+    // Make the mesh component editable in the Unreal Editor
+    UPROPERTY(EditAnywhere, Category = "Procedural Generation")
+    UInstancedStaticMeshComponent* TreeMeshComponent;
+
+    void PlaceEnvironmentObjects(const TArray<TArray<float>>& NoiseMap);
+
 
 protected:
     virtual void BeginPlay() override;
@@ -108,7 +121,6 @@ private:
     FLinearColor GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeType);
     float GetInterpolatedHeight(float heightValue, ECell BiomeType);
 
-    FCriticalSection CriticalSection;
 
     //Schostaic Automata Stack to Create Biome Map
     TArray<TArray<ECell>> Island(TArray<TArray<ECell>>& Board);

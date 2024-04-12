@@ -11,11 +11,29 @@ DEFINE_LOG_CATEGORY(LogDiamondSquare);
 
 ADiamondSquare::ADiamondSquare()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    // Always set a RootComponent first
+    ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMesh"));
+    RootComponent = ProceduralMesh; // Set ProceduralMesh as the RootComponent
 
-    ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
-    ProceduralMesh->SetupAttachment(GetRootComponent());
+    // Initialize and attach the tree mesh component to the ProceduralMesh
+    TreeMeshComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("TreeMeshComponent"));
+    TreeMeshComponent->SetupAttachment(ProceduralMesh); // Attach to the root component
+
+    // Assign the static mesh asset to the TreeMeshComponent
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> TreeMeshAsset(TEXT("/Game/Fantastic_Village_Pack/meshes/environment/SM_ENV_TREE_village_LOD0"));
+    if (TreeMeshAsset.Succeeded())
+    {
+        TreeMeshComponent->SetStaticMesh(TreeMeshAsset.Object);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Failed to load tree mesh."));
+    }
+
+    // PrimaryActorTick.bCanEverTick is set to false by default, but you can enable it if needed.
+    PrimaryActorTick.bCanEverTick = false;
 }
+
 
 void ADiamondSquare::OnConstruction(const FTransform& Transform)
 {
@@ -24,13 +42,31 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
 
     // Check if the mesh needs to be recreated
     if (recreateMesh) {
-        double StartTimeOC = FPlatformTime::Seconds();
-        auto NoiseMap = GeneratePerlinNoiseMap();
+        if (!ProceduralMesh || !TreeMeshComponent)
+        {
+            UE_LOG(LogTemp, Error, TEXT("Mesh components are not initialized properly."));
+            return;
+        }
 
         // Reset mesh data to prepare for new mesh creation
+        Normals.Reset();
+        Tangents.Reset();
+        UV0.Reset();
+        Colors.Reset();
         Vertices.Reset();
         Triangles.Reset();
         UV0.Reset();
+        BiomeMap.Reset();
+
+        if (TreeMeshComponent)
+        {
+            TreeMeshComponent->ClearInstances();
+        }
+        double StartTimeOC = FPlatformTime::Seconds();
+        auto NoiseMap = GeneratePerlinNoiseMap();
+
+        
+
 
         // Create vertices and triangles for the mesh
         CreateVertices(NoiseMap);
@@ -38,19 +74,25 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
 
 
         // Calculate normals and tangents for the mesh
-        UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
-
-
+        if (CalculateTangents) {
+            UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+        }
 
         // Create the mesh section with the specified data and apply the material
         ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
         ProceduralMesh->SetMaterial(0, Material);
+
+        if (addProceduralObjects) {
+            PlaceEnvironmentObjects(NoiseMap);
+        }
 
         double EndTimeOC = FPlatformTime::Seconds();
         double ElapsedTimeOC = EndTimeOC - StartTimeOC;
         UE_LOG(LogTemp, Warning, TEXT("Construction took %f seconds"), ElapsedTimeOC);
 
         // Reset the flag to avoid unnecessary mesh recreation
+        CalculateTangents = false;
+        addProceduralObjects = false;
         recreateMesh = false;
     }
 }
@@ -68,6 +110,66 @@ void ADiamondSquare::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
 
 }
+
+void ADiamondSquare::PlaceEnvironmentObjects(const TArray<TArray<float>>& NoiseMap)
+{
+    for (int X = 0; X < XSize; ++X)
+    {
+        for (int Y = 0; Y < YSize; ++Y)
+        {
+            float Z = NoiseMap[X][Y] * ZMultiplier;
+            FVector Location(X * Scale, Y * Scale, Z);
+            FRotator Rotation = FRotator(0, FMath::RandRange(0, 360), 0); // Random rotation for variation
+            FVector VectorScale(5.0f, 5.0f, 5.0f); // Scale can be adjusted based on the object and biome
+
+            ECell Biome = BiomeMap[X][Y];
+
+            // Determine what object to place based on the biome
+            switch (Biome)
+            {
+            case ECell::Forest:
+                if (FMath::RandRange(0.0f, 1.0f) < 0.01f) // Low probability for buildings
+                {
+                    TreeMeshComponent->AddInstance(FTransform(Rotation, Location, VectorScale));
+                }
+            case ECell::Taiga:
+                // Add a tree instance
+                
+                break;
+            case ECell::Mountain:
+                if (FMath::RandRange(0.0f, 1.0f) < 0.01f) // Low probability for buildings
+                {
+                    TreeMeshComponent->AddInstance(FTransform(Rotation, Location, VectorScale));
+                }
+            case ECell::Highland:
+                if (FMath::RandRange(0.0f, 1.0f) < 0.01f) // Low probability for buildings
+                {
+                    TreeMeshComponent->AddInstance(FTransform(Rotation, Location, VectorScale));
+                }
+                // Add a rock instance
+                //RockMeshComponent->AddInstance(FTransform(Rotation, Location, Scale));
+                break;
+            case ECell::Plains:
+                if (FMath::RandRange(0.0f, 1.0f) < 0.01f) // Low probability for buildings
+                {
+                    TreeMeshComponent->AddInstance(FTransform(Rotation, Location, VectorScale));
+                }
+            case ECell::Savannah:
+                if (FMath::RandRange(0.0f, 1.0f) < 0.01f) // Low probability for buildings
+                {
+                    TreeMeshComponent->AddInstance(FTransform(Rotation, Location, VectorScale));
+                }
+                // Add a building instance with some probability
+                if (FMath::RandRange(0.0f, 1.0f) < 0.01f) // Low probability for buildings
+                {
+                    //BuildingMeshComponent->AddInstance(FTransform(Rotation, Location, Scale));
+                }
+                break;
+            }
+        }
+    }
+}
+
 
 void ADiamondSquare::CreateTriangles()
 {
@@ -355,8 +457,20 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = Zoom(Board);
     Board = AddIsland2(Board);
     Board = Zoom(Board);
+    Board = Shore(Board);
     Board = Zoom(Board);
-    //Board = Shore(Board);
+    Board = Zoom(Board);
+
+    if (Board.Num() > 0)
+    {
+        int NumRows = Board.Num();
+        int NumColumns = Board[0].Num();  // Assuming all rows are of the same length
+        UE_LOG(LogTemp, Warning, TEXT("Board Size: %d x %d"), NumRows, NumColumns);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Board is empty"));
+    }
     //PrintBoard(Board); // Print the resulting board
     double EndTimeTI = FPlatformTime::Seconds();
     double ElapsedTimeTI = EndTimeTI - StartTimeTI;
