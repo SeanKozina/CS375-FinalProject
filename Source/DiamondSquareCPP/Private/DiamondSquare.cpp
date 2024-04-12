@@ -1163,6 +1163,7 @@ void ADiamondSquare::PrintBoard(const TArray<TArray<ECell>>& Board)
     UE_LOG(LogTemp, Warning, TEXT("%s"), *BoardString);
 }
 
+//This needs to be fixed has a bug where it adds beach between non ocean edges
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>& Board) {
     TArray<TArray<ECell>> ModifiedBoard = Board; // Make a copy of the board to modify and return.
 
