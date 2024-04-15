@@ -40,7 +40,8 @@ public:
         Beach,
         River,
         SwampShore,
-        Ice
+        Ice,
+        ColdBeach
     };
 
     ADiamondSquare();
@@ -155,4 +156,7 @@ private:
     TArray<TArray<ECell>> TestIsland();
     bool CanTransform(ECell CellType) const; 
     void InitializeSeed();
+
+
+
 };

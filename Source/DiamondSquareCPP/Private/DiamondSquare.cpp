@@ -320,7 +320,9 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
     case ECell::Plains: // Plains
         return FMath::Lerp(0.2f, 0.5f, HeightValue);
     case ECell::Beach: // Beach
-        return FMath::Lerp(0.05f, 0.2f, HeightValue);
+        return FMath::Lerp(0.03f, 0.3f, HeightValue);
+    case ECell::ColdBeach: // Beach
+        return FMath::Lerp(0.03f, 0.3f, HeightValue);
     case ECell::Desert: // Desert
         return FMath::Lerp(0.2f, 0.6f, HeightValue);
     case ECell::River: // River
@@ -385,6 +387,9 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
     case ECell::Beach:
         Color = FLinearColor(0.82f, 0.66f, 0.42f); // Sandy Beach
         break;
+    case ECell::ColdBeach:
+        Color = FLinearColor(0.627f, 0.706f, 0.784f); // Cold Beach
+        break;
     case ECell::Desert:
         Color = FLinearColor(0.82f, 0.66f, 0.42f); // Sand
         break;
@@ -410,13 +415,13 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
         Color = FLinearColor(0.25f, 0.40f, 0.18f); // Deep Forest Green
         break;
     case ECell::Highland:
-        Color = (Z > 0.75f) ? FLinearColor::White : FLinearColor(0.65f, 0.50f, 0.39f); // Rocky Terrain
+        Color = (Z > 0.75f) ? FLinearColor::White : FLinearColor(0.502f, 0.502f, 0.502f); // Rocky Terrain
         break;
     case ECell::IcePlains:
         Color = FLinearColor(0.90f, 0.90f, 0.98f); // Very Light Blue, almost white
         break;
     case ECell::SwampShore:
-        Color = FLinearColor(76, 152, 123);
+        Color = FLinearColor(0.306f,0.369f,0.224f);
         break;
     case ECell::Land:
         Color = FLinearColor::Black; 
@@ -460,21 +465,21 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = AddIsland2(Board);
     Board = WarmToTemperate(Board);
     Board = FreezingToCold(Board);
+    Board = Zoom(Board);
+    Board = AddIsland2(Board);
     if (SurroundMapWithOcean) {
         Board = SurroundWithOcean(Board);
     }
     Board = Zoom(Board);
-    Board = Zoom(Board);
-    Board = AddIsland2(Board);
-    Board = DeepOcean(Board);
     Board = TemperatureToBiome(Board);
+    Board = DeepOcean(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = Zoom(Board);
-    Board = AddIsland2(Board);
+    //Board = AddIsland2(Board);
     Board = Zoom(Board);
+    Board = Shore(Board);
     Board = Zoom(Board);
-    //Board = Shore(Board);
     //Board = Zoom(Board);
     //Board = Zoom(Board);
 
@@ -1172,36 +1177,39 @@ void ADiamondSquare::PrintBoard(const TArray<TArray<ECell>>& Board)
     UE_LOG(LogTemp, Warning, TEXT("%s"), *BoardString);
 }
 
-//This needs to be fixed has a bug where it adds beach between non ocean edges
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>& Board) {
     TArray<TArray<ECell>> ModifiedBoard = Board; // Make a copy of the board to modify and return.
 
-    int ShoreDepth = 0;
-    int SwampShoreDepth = 0;
+    int ShoreDepth = 0; // Assuming we want beaches to be 1 cell wide
 
-    // Define ignore cells set using TSet for Unreal Engine.
-    TSet<ECell> IgnoreSet = { ECell::Tundra, ECell::IcePlains, ECell::Taiga, ECell::SnowyForest,ECell::DeepOcean };
+    TSet<ECell> IgnoreSet = { ECell::Tundra, ECell::IcePlains, ECell::Taiga, ECell::SnowyForest, ECell::DeepOcean };
+    TSet<ECell> OceanSet = { ECell::Ocean }; 
+    TSet<ECell> DeepOceanSet = { ECell::DeepOcean };
 
     for (int32 Row = 0; Row < Board.Num(); ++Row) {
         for (int32 Col = 0; Col < Board[Row].Num(); ++Col) {
-            if (IsEdgeCell(Board, Row, Col)) {
-                ECell CurrentCell = Board[Row][Col];
-                // Check if the current cell should be ignored.
-                if (!IgnoreSet.Contains(CurrentCell)) {
-                    // Apply logic for non-ocean cells adjacent to ocean.
-                    if (CurrentCell != ECell::Ocean) {
-                        // Check if the current cell is Swamp for special treatment.
-                        if (CurrentCell == ECell::Swamp) {
-                            SetBoardRegion(ModifiedBoard, Row, Col, SwampShoreDepth, ECell::SwampShore);
-                        }
-                        else {
-                            SetBoardRegion(ModifiedBoard, Row, Col, ShoreDepth, ECell::Beach);
-                        }
-                    }
+            ECell CurrentCell = Board[Row][Col];
+            // Check adjacency to Ocean and ensure it is not adjacent to Deep Ocean
+            if (CurrentCell != ECell::Ocean && IsAdjacentToGroup(Board, Row, Col, { CurrentCell }, OceanSet) &&
+                !IsAdjacentToGroup(Board, Row, Col, { CurrentCell }, DeepOceanSet)) {
+                if (IgnoreSet.Contains(CurrentCell)) {
+                    // Set cells from IgnoreSet that are adjacent to ocean but not adjacent to deep ocean to ColdBeach
+                    SetBoardRegion(ModifiedBoard, Row, Col, ShoreDepth, ECell::ColdBeach);
+                }
+                else if (CurrentCell == ECell::Swamp) {
+                    // Special treatment for swamp cells adjacent to ocean
+                    SetBoardRegion(ModifiedBoard, Row, Col, ShoreDepth, ECell::SwampShore);
+                }
+                else {
+                    // Standard treatment for other land cells adjacent to ocean
+                    SetBoardRegion(ModifiedBoard, Row, Col, ShoreDepth, ECell::Beach);
                 }
             }
         }
     }
 
+
     return ModifiedBoard;
 }
+
+
