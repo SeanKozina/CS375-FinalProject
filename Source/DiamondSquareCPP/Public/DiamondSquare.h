@@ -84,6 +84,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Biome Map Parameters")
     int32 Seed = 0;
 
+    UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.0f, ClampMax = 1.0f), Category = "Biome Map Parameters")
+    float ProbabilityOfLand = 0.5f;
+
     UPROPERTY(EditAnywhere, Category = "Procedural Generation")
     bool addProceduralObjects = false;
 

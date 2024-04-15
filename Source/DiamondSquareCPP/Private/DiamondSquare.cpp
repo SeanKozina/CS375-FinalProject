@@ -1,6 +1,7 @@
 #include "DiamondSquare.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
+#include "Math/Color.h"
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -317,7 +318,7 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
     case ECell::Mountain: // Mountain
         return FMath::Lerp(0.7f, 1.0f, HeightValue);
     case ECell::Plains: // Plains
-        return FMath::Lerp(0.1f, 0.3f, HeightValue);
+        return FMath::Lerp(0.2f, 0.5f, HeightValue);
     case ECell::Beach: // Beach
         return FMath::Lerp(0.05f, 0.2f, HeightValue);
     case ECell::Desert: // Desert
@@ -327,7 +328,7 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
     case ECell::Taiga: // Taiga
         return FMath::Lerp(0.25f, 0.65f, HeightValue);
     case ECell::Forest: // Forest
-        return FMath::Lerp(0.35f, 0.55f, HeightValue);
+        return FMath::Lerp(0.2f, 0.7f, HeightValue);
     case ECell::Swamp: // Swamp
         return FMath::Lerp(0.05f, 0.2f, HeightValue);
     case ECell::Tundra: // Tundra
@@ -409,7 +410,7 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
         Color = FLinearColor(0.25f, 0.40f, 0.18f); // Deep Forest Green
         break;
     case ECell::Highland:
-        Color = FLinearColor(0.65f, 0.50f, 0.39f); // Rocky Terrain
+        Color = (Z > 0.75f) ? FLinearColor::White : FLinearColor(0.65f, 0.50f, 0.39f); // Rocky Terrain
         break;
     case ECell::IcePlains:
         Color = FLinearColor(0.90f, 0.90f, 0.98f); // Very Light Blue, almost white
@@ -428,11 +429,17 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
     default:
         // If the biome type is unrecognized, use a default color red
         Color = FLinearColor::Red;
-        break;
     }
+
+    // Generate random variations in the RGB components
+    float variation = 0.05f; // Adjust this value for more or less variation
+    Color.R = FMath::Clamp(Color.R + Rng.FRandRange(-variation, variation), 0.0f, 1.0f);
+    Color.G = FMath::Clamp(Color.G + Rng.FRandRange(-variation, variation), 0.0f, 1.0f);
+    Color.B = FMath::Clamp(Color.B + Rng.FRandRange(-variation, variation), 0.0f, 1.0f);
 
     return Color;
 }
+
 
 
 // Example usage within the ADiamondSquare class
@@ -442,7 +449,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     TArray<TArray<ECell>> Board;
     InitializeSeed();
     Island(Board); // Adjust Island function to return the board
-    Board = FuzzyZoom(Board);
+    Board = FuzzyZoom(Board);;
     Board = AddIsland(Board);
     Board = Zoom(Board);
     Board = AddIsland(Board);
@@ -465,6 +472,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     Board = Zoom(Board);
     Board = Zoom(Board);
     Board = AddIsland2(Board);
+    Board = Zoom(Board);
     Board = Zoom(Board);
     //Board = Shore(Board);
     //Board = Zoom(Board);
@@ -621,7 +629,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Zoom(const TArray<TArray<E
 
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TArray<ADiamondSquare::ECell>>& Board)
 {
-    const float PLand = 0.6f;
     const int32 Rows = Board.Num();
     const int32 Cols = Board[0].Num();
     TArray<TArray<ECell>> NextBoard = Board; // Copy the original board to modify
@@ -629,7 +636,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
     for (int32 i = 0; i < Rows; ++i) {
         for (int32 j = 0; j < Cols; ++j) {
             if (IsEdgeCell(Board, i, j) && CanTransform(Board[i][j])) {
-                ECell NewState = Rng.FRand() < PLand ? ECell::Land : ECell::Ocean;
+                ECell NewState = Rng.FRand() < ProbabilityOfLand ? ECell::Land : ECell::Ocean;
                 NextBoard[i][j] = NewState;
             }
         }
@@ -684,7 +691,9 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland2(const TArray<TA
                 }
 
                 // If a majority type is found, update the cell
-                NextBoard[i][j] = MajorityType;
+                if (MajorityType != ECell::Ocean && Rng.FRand() <= ProbabilityOfLand) {
+                    NextBoard[i][j] = MajorityType;
+                }
 
             }
         }
