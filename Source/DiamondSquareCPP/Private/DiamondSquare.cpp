@@ -342,7 +342,7 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
     case ECell::Savannah: // Savannah
         return FMath::Lerp(0.2f, 0.5f, HeightValue);
     case ECell::Highland: // Highland
-        return FMath::Lerp(0.3f, 0.99f, HeightValue);
+        return FMath::Lerp(0.5f, 0.99f, HeightValue);
     case ECell::IcePlains: // IcePlains
         return FMath::Lerp(0.1f, 0.5f, HeightValue);
     case ECell::Ice: // Ice

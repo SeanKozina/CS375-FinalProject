@@ -56,10 +56,10 @@ public:
     int YSize = 200;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    float ZMultiplier = 38.0f;
+    float ZMultiplier = 8.0f;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-    float ZExpo = 1.1;
+    float ZExpo = 2.1;
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
     float Scale = 500.0f;
@@ -87,13 +87,14 @@ public:
 
     UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.0f, ClampMax = 1.0f), Category = "Biome Map Parameters")
     float ProbabilityOfLand = 0.5f;
-
-    UPROPERTY(EditAnywhere, Category = "Procedural Generation")
+   
+    //UPROPERTY(EditAnywhere, Category = "Procedural Generation")
     bool addProceduralObjects = false;
 
     // Make the mesh component editable in the Unreal Editor
-    UPROPERTY(EditAnywhere, Category = "Procedural Generation")
+    //UPROPERTY(EditAnywhere, Category = "Procedural Generation")
     UInstancedStaticMeshComponent* TreeMeshComponent;
+   
 
     void PlaceEnvironmentObjects(const TArray<TArray<float>>& NoiseMap);
 
