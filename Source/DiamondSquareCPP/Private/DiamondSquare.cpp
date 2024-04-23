@@ -66,9 +66,6 @@ void ADiamondSquare::OnConstruction(const FTransform& Transform)
         double StartTimeOC = FPlatformTime::Seconds();
         auto NoiseMap = GeneratePerlinNoiseMap();
 
-        
-
-
         // Create vertices and triangles for the mesh
         CreateVertices(NoiseMap);
         CreateTriangles();
@@ -206,7 +203,6 @@ void ADiamondSquare::CreateTriangles()
     double ElapsedTime = EndTime - StartTime;
     UE_LOG(LogTemp, Warning, TEXT("CreateTriangles took %f seconds"), ElapsedTime);
 }
-
 
 
 void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
@@ -349,13 +345,25 @@ float ADiamondSquare::GetInterpolatedHeight(float HeightValue, ECell BiomeType)
         return FMath::Lerp(0.2f, 0.9f, HeightValue);
     case ECell::SwampShore: // SwampShore
         return FMath::Lerp(0.05f, 0.25f, HeightValue);
-
+    case ECell::SandDunes:
+        return FMath::Lerp(0.3f, 0.5f, HeightValue); // Slightly elevated
+    case ECell::Grassland:
+        return FMath::Lerp(0.2f, 0.4f, HeightValue); // Generally flat
+    case ECell::Marsh:
+        return FMath::Lerp(0.0f, 0.2f, HeightValue); // Low and wet
+    case ECell::Volcanic:
+        return FMath::Lerp(0.3f, 1.0f, HeightValue); // Ranges from high to very high
+    case ECell::Oasis:
+        return FMath::Lerp(0.1f, 0.2f, HeightValue); // Very small elevation changes
+    case ECell::Steppe:
+        return FMath::Lerp(0.2f, 0.6f, HeightValue); // Elevated plains
+    case ECell::Mesa:
+        return FMath::Lerp(0.4f, 0.8f, HeightValue); // High plate
     default:
         // For unrecognized biomes, return the original height
         return HeightValue;
     }
 }
-
 
 
 FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeType)
@@ -370,6 +378,27 @@ FLinearColor ADiamondSquare::GetColorBasedOnBiomeAndHeight(float Z, ECell BiomeT
         break;
     case ECell::DeepOcean:
         Color = FLinearColor(0.05f, 0.19f, 0.57f); // Deep Water
+        break;
+    case ECell::SandDunes:
+        Color = FLinearColor(0.96f, 0.91f, 0.64f); // Sandy dunes
+        break;
+    case ECell::Grassland:
+        Color = FLinearColor(0.25f, 0.85f, 0.50f); // Rich grass
+        break;
+    case ECell::Marsh:
+        Color = FLinearColor(0.40f, 0.60f, 0.34f); // Wet, lush green
+        break;
+    case ECell::Volcanic:
+        Color = FLinearColor(0.34f, 0.34f, 0.34f); // Dark ash gray
+        break;
+    case ECell::Oasis:
+        Color = FLinearColor(0.20f, 0.68f, 0.31f); // Vibrant oasis blue and green
+        break;
+    case ECell::Steppe:
+        Color = FLinearColor(0.59f, 0.44f, 0.09f); // Dry yellow-brown
+        break;
+    case ECell::Mesa:
+        Color = FLinearColor(0.70f, 0.42f, 0.20f); // Reddish brown
         break;
     case ECell::Tundra:
         Color = FLinearColor::White;
@@ -500,6 +529,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TestIsland()
     return Board;
 }
 
+
 void ADiamondSquare::InitializeSeed()
 {
     Rng.Initialize(Seed);
@@ -583,6 +613,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddTemps(const TArray<TArr
     return NewBoard;
 }
 
+
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Zoom(const TArray<TArray<ECell>>& Board)
 {
     int32 Rows = Board.Num();
@@ -650,6 +681,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland(const TArray<TAr
     return NextBoard;
 }
 
+
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland2(const TArray<TArray<ADiamondSquare::ECell>>& Board)
 {
     const int32 Rows = Board.Num();
@@ -706,8 +738,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::AddIsland2(const TArray<TA
 
     return NextBoard;
 }
-
-
 
 
 // CanTransform checks if a cell of a given type is eligible for transformation.
@@ -832,7 +862,6 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Island(TArray<TArray<ECell
     // At this point, Board is filled with cells. You can return it or use it as needed.
     // Note: Adjustments might be needed based on how you plan to use the board.
 }
-
 
 
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::RemoveTooMuchOcean(const TArray<TArray<ADiamondSquare::ECell>>& Board)
@@ -1016,6 +1045,7 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::FreezingToCold(const TArra
     return NextBoard;
 }
 
+
 ADiamondSquare::ECell ADiamondSquare::SelectBiome(const TArray<ECell>& Biomes, const TArray<float>& Odds)
 {
     float Roll = Rng.FRand(); // Roll a random number between 0.0 and 1.0
@@ -1045,26 +1075,26 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::TemperatureToBiome(const T
                 // Example mapping for Warm temperature to biomes
                 if (Board[Row][Col] == ECell::Warm)
                 {
-                    TArray<ECell> Biomes = { ECell::Desert, ECell::Plains, ECell::Rainforest, ECell::Savannah, ECell::Swamp };
-                    TArray<float> Odds = { 0.2f, 0.4f, 0.18f, 0.2f, 0.02f };
+                    TArray<ECell> Biomes = { ECell::Desert, ECell::Plains, ECell::Rainforest, ECell::Savannah, ECell::Swamp, ECell::Steppe, ECell::Mesa, ECell::Grassland };
+                    TArray<float> Odds = { 0.2f, 0.3f, 0.05f, 0.15f, 0.02f, 0.1f, 0.05f, 0.13f };
                     NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
                 else if (Board[Row][Col] == ECell::Temperate)
                 {
-                    TArray<ECell> Biomes = { ECell::Woodland, ECell::Forest, ECell::Highland };
-                    TArray<float> Odds = { 0.2f, 0.55f, 0.25f };
+                    TArray<ECell> Biomes = { ECell::Woodland, ECell::Forest, ECell::Highland, ECell::Marsh };
+                    TArray<float> Odds = { 0.2f, 0.5f, 0.2f, 0.1f };
                     NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
                 else if (Board[Row][Col] == ECell::Cold)
                 {
-                    TArray<ECell> Biomes = { ECell::Taiga, ECell::SnowyForest };
-                    TArray<float> Odds = { 0.5f, 0.5f };
+                    TArray<ECell> Biomes = { ECell::Taiga, ECell::SnowyForest, ECell::Highland, ECell::Volcanic };
+                    TArray<float> Odds = { 0.4f, 0.3f, 0.25f, 0.05f };
                     NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
                 else if (Board[Row][Col] == ECell::Freezing)
                 {
-                    TArray<ECell> Biomes = { ECell::Tundra, ECell::IcePlains };
-                    TArray<float> Odds = { 0.7f, 0.3f };
+                    TArray<ECell> Biomes = { ECell::Tundra, ECell::IcePlains, ECell::Ice, ECell::SnowyForest};
+                    TArray<float> Odds = { 0.4f, 0.3f, 0.15f, 0.1f, 0.05f };
                     NewBoard[Row][Col] = SelectBiome(Biomes, Odds);
                 }
             }
@@ -1177,12 +1207,13 @@ void ADiamondSquare::PrintBoard(const TArray<TArray<ECell>>& Board)
     UE_LOG(LogTemp, Warning, TEXT("%s"), *BoardString);
 }
 
+
 TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<ADiamondSquare::ECell>>& Board) {
     TArray<TArray<ECell>> ModifiedBoard = Board; // Make a copy of the board to modify and return.
 
     int ShoreDepth = 0; // Assuming we want beaches to be 1 cell wide
 
-    TSet<ECell> IgnoreSet = { ECell::Tundra, ECell::IcePlains, ECell::Taiga, ECell::SnowyForest, ECell::DeepOcean };
+    TSet<ECell> IgnoreSet = { ECell::Tundra, ECell::IcePlains, ECell::Taiga, ECell::SnowyForest, ECell::DeepOcean, ECell::Ice };
     TSet<ECell> OceanSet = { ECell::Ocean }; 
     TSet<ECell> DeepOceanSet = { ECell::DeepOcean };
 
@@ -1211,5 +1242,4 @@ TArray<TArray<ADiamondSquare::ECell>> ADiamondSquare::Shore(const TArray<TArray<
 
     return ModifiedBoard;
 }
-
 

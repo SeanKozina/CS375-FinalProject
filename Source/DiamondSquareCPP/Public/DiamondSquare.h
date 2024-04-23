@@ -25,10 +25,13 @@ public:
         // Biome types
         DeepOcean,
         Desert,
+        SandDunes,
         Plains,
+        Grassland,
         Rainforest,
         Savannah,
         Swamp,
+        Marsh,
         Woodland,
         Forest,
         Highland,
@@ -37,11 +40,15 @@ public:
         Tundra,
         IcePlains,
         Mountain,
+        Volcanic,
         Beach,
         River,
         SwampShore,
         Ice,
-        ColdBeach
+        ColdBeach,
+        Oasis,
+        Steppe,
+        Mesa
     };
 
     ADiamondSquare();
@@ -157,7 +164,4 @@ private:
     TArray<TArray<ECell>> TestIsland();
     bool CanTransform(ECell CellType) const; 
     void InitializeSeed();
-
-
-
 };
