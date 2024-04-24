@@ -238,7 +238,7 @@ void ADiamondSquare::CreateVertices(const TArray<TArray<float>>& NoiseMap)
         Tangents.Init(FProcMeshTangent(1.0f, 0.0f, 0.0f), Vertices.Num());
 
         // Create the mesh section with the generated data
-        ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
+        //ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, Colors, Tangents, true);
     }
     double EndTimeCV = FPlatformTime::Seconds();
     double ElapsedTimeCV = EndTimeCV - StartTimeCV;
